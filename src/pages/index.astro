@@ -1,0 +1,242 @@
+---
+import Base from '../layouts/Base.astro';
+
+const accent = '#2f5d74';
+const accentSoft = '#dde6ec';
+
+const stats = [
+  { k: 'MBA', v: 'w Ochronie Zdrowia' },
+  { k: '15+ lat', v: 'w ochronie zdrowia' },
+  { k: 'Medi3', v: 'prezes fundacji' },
+];
+const tags = ['Fizjoterapia', 'Zarządzanie w ochronie zdrowia', 'Doradztwo biznesowe', 'Trener tenisa', 'Położnictwo i ginekologia'];
+const services = [
+  { n: 'I', title: 'Zarządzanie', body: 'Zarządzanie w ochronie zdrowia oraz budowanie zespołów medycznych opartych na relacji i zaufaniu.', points: ['Budowanie zespołów', 'Strategia i organizacja', 'Wydarzenia i szkolenia'] },
+  { n: 'II', title: 'Doradztwo biznesowe', body: 'Przenoszę formy znane startupom (inkubatory) na rynek opieki medycznej — pomagam zakładać działalność i pozyskiwać kontrakty z NFZ.', points: ['Działania promocyjne i marketing', 'Księgowość i kwestie prawne', 'Sprzęt oraz miejsce do zabiegów'] },
+  { n: 'III', title: 'Fizjoterapia', body: 'Podczas wizyty tworzę psychologiczno-somatyczną analizę pacjenta i indywidualizuję terapię do jego potrzeb.', points: ['Napięciowe bóle głowy', 'Ostre bóle kręgosłupa', 'Po urazach i operacjach'] },
+];
+const experience = [
+  { role: 'CEO', org: 'Poradnie Medyczne Medi3', period: 'paź 2018 – obecnie' },
+  { role: 'Koordynator ds. Infrastruktury IT', org: 'Med-Dom · usługi medyczne', period: 'luty 2026 – obecnie' },
+  { role: 'Interim Manager', org: 'Primadentis · Michał Wojciechowski — przychodnia stomatologiczna', period: 'wrz 2025 – obecnie' },
+  { role: 'Koordynator projektów', org: 'Fundacja Auxilium · umowa', period: 'wrz 2023 – maj 2024' },
+  { role: 'Wsparcie techniczne IT', org: 'Fundacja Auxilium · wolontariat', period: 'maj 2024 – obecnie' },
+  { role: 'Menedżer placówki', org: 'Pro-Smile Przychodnia Stomatologiczna', period: 'lut 2024 – maj 2025' },
+  { role: 'Customer Experience Manager', org: 'Grupa CenterMed', period: 'mar 2023 – sie 2023' },
+];
+const medi3 = [
+  { t: 'Szkolenia dla personelu', d: 'Fizjoterapia i położnictwo — warsztaty i kursy.' },
+  { t: 'Warsztaty i wydarzenia', d: 'Także dla pacjentów, online i stacjonarnie.' },
+  { t: 'Wdrożenia IT', d: 'Wdrażanie i serwis programów informatycznych.' },
+];
+const places = [
+  { name: 'Centrum Medyczne Smoczka', addr: 'Mielec, ul. Wyszyńskiego 4a/7', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d637.357926521077!2d21.465524929224365!3d50.28386885566086!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x473d6b6eaf76bf93%3A0x70350845f1bd8ff0!2zUG_Fgm_FvG5hIERsYSBDaWViaWU!5e0!3m2!1spl!2spl!4v1635832592385!5m2!1spl!2spl' },
+  { name: 'Siedziba główna Fundacji Medi3', addr: 'Mielec, ul. Leśna 3', map: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2549.1844605852866!2d21.429729215147795!3d50.2884845069041!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x473d6b40d660f2eb%3A0x582f24798bee72bf!2sFundacja%20Medi3%20-%20Nowa%20Jako%C5%9B%C4%87%20Opieki%20Zdrowotnej%20-%20Siedziba!5e0!3m2!1spl!2spl!4v1605907905465!5m2!1spl!2spl' },
+];
+---
+<Base title="Artur Gładosz — menedżer w ochronie zdrowia · fizjoterapeuta">
+  <div style="background:#f6f4ef;color:#1c1b18;min-height:100vh;overflow-x:hidden">
+
+    <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(246,244,239,0.82);border-bottom:1px solid rgba(28,27,24,0.08)">
+      <div style="max-width:1160px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+        <a href="#top" style="display:flex;align-items:center;gap:12px">
+          <span style="display:grid;place-items:center;width:40px;height:40px;border:1px solid #1c1b18;border-radius:50%;font-family:'Newsreader',serif;font-size:18px;letter-spacing:-0.5px">AG</span>
+          <span style="font-family:'Newsreader',serif;font-size:19px;letter-spacing:-0.2px">Artur Gładosz</span>
+        </a>
+        <nav style="display:flex;align-items:center;gap:26px;font-size:14.5px;font-weight:500">
+          <a href="#omnie" style="opacity:0.72" style-hover="opacity:1">O mnie</a>
+          <a href="#oferta" style="opacity:0.72" style-hover="opacity:1">Oferta</a>
+          <a href="#szkolenia" style="opacity:0.72" style-hover="opacity:1">Doświadczenie</a>
+          <a href="#medi3" style="opacity:0.72" style-hover="opacity:1">Fundacja</a>
+          <a href="#kontakt" style={`display:inline-flex;align-items:center;gap:8px;background:${accent};color:#fff;padding:9px 18px;border-radius:999px;font-weight:600;transition:opacity 0.3s ease,transform 0.3s cubic-bezier(0.22,1,0.36,1)`} style-hover="opacity:0.9;transform:translateY(-1px)">Umów wizytę</a>
+        </nav>
+      </div>
+    </header>
+
+    <section id="top" style="max-width:1160px;margin:0 auto;padding:88px 28px 72px;display:grid;grid-template-columns:1.15fr 0.85fr;gap:56px;align-items:center">
+      <div>
+        <div style={`display:inline-flex;align-items:center;gap:9px;font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:24px`}>
+          <span style={`width:26px;height:1px;background:${accent}`}></span> Menedżer · Buduję Zespoły
+        </div>
+        <h1 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(44px,6vw,74px);line-height:1.02;letter-spacing:-1.5px;margin-bottom:26px">Całościowe podejście do&nbsp;człowieka, zespołu i&nbsp;organizacji.</h1>
+        <p style="font-size:18px;line-height:1.6;max-width:530px;opacity:0.78;margin-bottom:36px">Fizjoterapeuta, konsultant medyczny i prezes Fundacji Medi3. Łączę zarządzanie w ochronie zdrowia, doradztwo biznesowe i terapię — budując zespoły oparte na relacji i zaufaniu.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px">
+          <a href="tel:+48667224896" style="display:inline-flex;align-items:center;gap:10px;background:#1c1b18;color:#f6f4ef;padding:15px 28px;border-radius:999px;font-weight:600;font-size:15.5px;transition:background 0.3s ease,transform 0.3s cubic-bezier(0.22,1,0.36,1)" style-hover={`background:${accent};transform:translateY(-2px)`}>Zadzwoń · 667 224 896</a>
+          <a href="https://wa.me/48667224896?text=Dzie%C5%84%20dobry" target="_blank" style="display:inline-flex;align-items:center;gap:10px;border:1px solid rgba(28,27,24,0.25);padding:15px 26px;border-radius:999px;font-weight:600;font-size:15.5px;transition:border-color 0.3s ease,transform 0.3s cubic-bezier(0.22,1,0.36,1)" style-hover="border-color:#1c1b18;transform:translateY(-2px)">Napisz na WhatsApp</a>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:30px;margin-top:44px;padding-top:34px;border-top:1px solid rgba(28,27,24,0.1)">
+          {stats.map((s) => (
+            <div>
+              <div style="font-family:'Newsreader',serif;font-size:30px;letter-spacing:-0.5px">{s.k}</div>
+              <div style="font-size:13.5px;opacity:0.6;margin-top:2px">{s.v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style="position:relative">
+        <div style="aspect-ratio:4/5;border-radius:14px;overflow:hidden;background:#eceae3;border:1px solid rgba(28,27,24,0.1)">
+          <img src="/images/artur.png" alt="Artur Gładosz" style="width:100%;height:100%;object-fit:cover;object-position:center top;display:block;transition:transform 0.6s cubic-bezier(0.22,1,0.36,1)" style-hover="transform:scale(1.05)" />
+        </div>
+        <div style="position:absolute;bottom:-18px;left:-18px;background:#fff;border:1px solid rgba(28,27,24,0.1);border-radius:12px;padding:16px 20px;box-shadow:0 18px 40px rgba(28,27,24,0.1)">
+          <div style="font-size:12.5px;opacity:0.55;margin-bottom:3px">Wykształcenie</div>
+          <div style="font-weight:600;font-size:15px">mgr Fizjoterapii · MBA w Ochronie Zdrowia</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="omnie" style="border-top:1px solid rgba(28,27,24,0.08);border-bottom:1px solid rgba(28,27,24,0.08);background:#f0ede6">
+      <div style="max-width:1160px;margin:0 auto;padding:80px 28px;display:grid;grid-template-columns:0.8fr 1.2fr;gap:56px">
+        <div>
+          <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:16px`}>O mnie</div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4vw,44px);line-height:1.08;letter-spacing:-1px">Poznaję mechanizmy, które nami kierują.</h2>
+        </div>
+        <div style="font-size:17px;line-height:1.72;opacity:0.85;display:flex;flex-direction:column;gap:18px">
+          <p>Jestem absolwentem Uniwersytetu Medycznego w Lublinie, gdzie zdobyłem tytuł magistra Fizjoterapii. Mam także tytuł MBA w Ochronie Zdrowia. Człowieka staram się postrzegać całościowo, nieustannie poznając mechanizmy, które nami kierują.</p>
+          <p>Sport jest nieodłącznym elementem mojego życia — jestem trenerem tenisa ziemnego, a każdą wolną chwilę spędzam aktywnie. Naturalnie przekłada się to na moje zainteresowanie pracą ze sportowcami.</p>
+          <p>Ze szczególną troską podchodzę do pacjentek, ze względu na moje zainteresowania fizjoterapią w położnictwie i ginekologii.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">
+            {tags.map((t) => (
+              <span style="border:1px solid rgba(28,27,24,0.2);border-radius:999px;padding:7px 15px;font-size:13.5px;font-weight:500;transition:background 0.3s ease,border-color 0.3s ease,color 0.3s ease" style-hover={`background:${accent};border-color:${accent};color:#fff`}>{t}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="oferta" style="max-width:1160px;margin:0 auto;padding:82px 28px 72px">
+      <div style="max-width:640px;margin-bottom:48px">
+        <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:16px`}>Oferta</div>
+        <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4vw,46px);line-height:1.06;letter-spacing:-1px">Realizuję projekty na zlecenie</h2>
+        <p style="font-size:17px;line-height:1.6;opacity:0.72;margin-top:16px">Doradztwo medyczne i biznesowe, zarządzanie w ochronie zdrowia oraz terapia — w jednym, spójnym podejściu.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:22px">
+        {services.map((svc) => (
+          <div style="background:#fff;border:1px solid rgba(28,27,24,0.09);border-radius:16px;padding:32px 28px;display:flex;flex-direction:column;gap:14px;transition:transform 0.35s cubic-bezier(0.22,1,0.36,1),box-shadow 0.35s ease,border-color 0.35s ease" style-hover="border-color:rgba(28,27,24,0.25);transform:translateY(-6px);box-shadow:0 22px 48px rgba(28,27,24,0.12)">
+            <div style={`width:44px;height:44px;border-radius:12px;background:${accentSoft};display:grid;place-items:center;font-family:'Newsreader',serif;font-size:20px;color:${accent}`}>{svc.n}</div>
+            <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:23px;letter-spacing:-0.3px">{svc.title}</h3>
+            <p style="font-size:15px;line-height:1.62;opacity:0.76">{svc.body}</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:8px;margin-top:4px">
+              {svc.points.map((p) => (
+                <li style="font-size:14.5px;display:flex;gap:9px;align-items:flex-start;opacity:0.82"><span style={`color:${accent};font-weight:700`}>·</span>{p}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <div style={`margin-top:26px;background:${accent};color:#fff;border-radius:16px;padding:34px 36px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:20px`}>
+        <div style="max-width:640px">
+          <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:24px;margin-bottom:8px">Zarządzanie w ochronie zdrowia</h3>
+          <p style="font-size:15.5px;line-height:1.6;opacity:0.9">Kompleksowe wsparcie placówek medycznych — od strategii i organizacji pracy, przez budowanie i rozwój zespołów, po optymalizację procesów i kontraktowanie świadczeń z NFZ. Łączę wiedzę menedżerską (MBA) z praktyką kliniczną, by ochrona zdrowia działała sprawniej i bliżej pacjenta.</p>
+        </div>
+        <a href="#kontakt" style="white-space:nowrap;background:#fff;color:#1c1b18;padding:14px 26px;border-radius:999px;font-weight:600;font-size:15px" style-hover="opacity:0.9">Porozmawiajmy →</a>
+      </div>
+    </section>
+
+    <section id="szkolenia" style="border-top:1px solid rgba(28,27,24,0.08);background:#f0ede6">
+      <div style="max-width:1160px;margin:0 auto;padding:80px 28px;display:grid;grid-template-columns:0.85fr 1.15fr;gap:56px">
+        <div>
+          <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:16px`}>Portfolio · Doświadczenie</div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4vw,44px);line-height:1.08;letter-spacing:-1px">Ścieżka menedżerska w&nbsp;praktyce</h2>
+          <p style="font-size:16px;line-height:1.62;opacity:0.72;margin-top:16px">Zarządzanie placówkami i infrastrukturą, budowanie zespołów oraz koordynacja projektów w ochronie zdrowia i sektorze NGO.</p>
+        </div>
+        <div style="display:flex;flex-direction:column">
+          {experience.map((e) => (
+            <div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:baseline;padding:20px 14px;margin:0 -14px;border-top:1px solid rgba(28,27,24,0.12);border-radius:10px;transition:background 0.3s ease,padding-left 0.3s ease" style-hover="background:rgba(47,93,116,0.06);padding-left:24px">
+              <div>
+                <div style="font-size:17px;line-height:1.3;font-weight:600">{e.role}</div>
+                <div style="font-size:14.5px;opacity:0.65;margin-top:3px">{e.org}</div>
+              </div>
+              <span style="font-size:14px;opacity:0.55;white-space:nowrap">{e.period}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="medi3" style="max-width:1160px;margin:0 auto;padding:82px 28px">
+      <div style="background:#1c1b18;color:#f6f4ef;border-radius:20px;padding:56px 52px;display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:center">
+        <div>
+          <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accentSoft};margin-bottom:18px`}>Fundacja Medi3</div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(28px,3.6vw,42px);line-height:1.08;letter-spacing:-0.8px;margin-bottom:20px">Nowa jakość opieki zdrowotnej</h2>
+          <p style="font-size:16.5px;line-height:1.68;opacity:0.82;margin-bottom:14px">Jako prezes Fundacji Medi3 organizuję szkolenia dla personelu medycznego — głównie z fizjoterapii i położnictwa — współtworzę i prowadzę warsztaty oraz wydarzenia, także dla pacjentów.</p>
+          <p style="font-size:16.5px;line-height:1.68;opacity:0.82;margin-bottom:30px">Wdrażam i serwisuję programy informatyczne oraz pomagam specjalistom zakładać własną działalność i pozyskiwać kontrakty z NFZ.</p>
+          <a href="https://medi3.pl" target="_blank" style={`display:inline-flex;align-items:center;gap:10px;background:${accent};color:#fff;padding:14px 28px;border-radius:999px;font-weight:600;font-size:15px`} style-hover="opacity:0.9">Odwiedź medi3.pl →</a>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px">
+          {medi3.map((m) => (
+            <div style="border:1px solid rgba(246,244,239,0.16);border-radius:12px;padding:20px 22px;transition:background 0.3s ease,border-color 0.3s ease" style-hover="background:rgba(246,244,239,0.06);border-color:rgba(246,244,239,0.4)">
+              <div style="font-family:'Newsreader',serif;font-size:19px;margin-bottom:5px">{m.t}</div>
+              <div style="font-size:14.5px;opacity:0.7;line-height:1.5">{m.d}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="miejsca" style="border-top:1px solid rgba(28,27,24,0.08);background:#f0ede6">
+      <div style="max-width:1160px;margin:0 auto;padding:80px 28px">
+        <div style="max-width:640px;margin-bottom:42px">
+          <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:16px`}>Miejsca przyjęć</div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4vw,44px);line-height:1.06;letter-spacing:-1px">Gdzie mnie spotkasz</h2>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+          {places.map((pl) => (
+            <div style="background:#fff;border:1px solid rgba(28,27,24,0.09);border-radius:16px;overflow:hidden;transition:transform 0.35s cubic-bezier(0.22,1,0.36,1),box-shadow 0.35s ease" style-hover="transform:translateY(-6px);box-shadow:0 22px 48px rgba(28,27,24,0.12)">
+              <iframe src={pl.map} style="width:100%;height:260px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+              <div style="padding:22px 24px">
+                <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:21px;margin-bottom:6px">{pl.name}</h3>
+                <p style="font-size:15px;opacity:0.72;line-height:1.5">{pl.addr}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <section id="kontakt" style="max-width:1160px;margin:0 auto;padding:88px 28px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center">
+        <div>
+          <div style={`font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:${accent};margin-bottom:16px`}>Kontakt</div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(34px,4.6vw,54px);line-height:1.03;letter-spacing:-1.2px;margin-bottom:22px">Umówmy spotkanie</h2>
+          <p style="font-size:17px;line-height:1.6;opacity:0.76;max-width:440px">Doradztwo medyczne i biznesowe, terapia lub współpraca przy projekcie — napisz albo zadzwoń, a znajdziemy dogodny termin.</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <a href="https://calendar.google.com/calendar/u/0/appointments/AcZssZ10Di4frFOX7HKsJmuh5Z3wXnig_pqDNaJsa44=" target="_blank" style={`display:flex;align-items:center;justify-content:space-between;background:${accent};color:#fff;border:1px solid ${accent};border-radius:14px;padding:22px 26px;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),box-shadow 0.3s ease`} style-hover="transform:translateY(-3px);box-shadow:0 18px 38px rgba(28,27,24,0.18)">
+            <span><span style="display:block;font-size:13px;opacity:0.8;margin-bottom:3px">Rezerwacja online</span><span style="font-family:'Newsreader',serif;font-size:22px">Umów spotkanie w kalendarzu</span></span>
+            <span style="font-size:22px">→</span>
+          </a>
+          <a href="tel:+48667224896" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(28,27,24,0.1);border-radius:14px;padding:22px 26px;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),border-color 0.3s ease,box-shadow 0.3s ease" style-hover="border-color:#1c1b18;transform:translateY(-3px);box-shadow:0 16px 32px rgba(28,27,24,0.1)">
+            <span><span style="display:block;font-size:13px;opacity:0.55;margin-bottom:3px">Telefon</span><span style="font-family:'Newsreader',serif;font-size:22px">+48 667 224 896</span></span>
+            <span style={`color:${accent};font-size:22px`}>→</span>
+          </a>
+          <a href="mailto:kontakt@arturgladosz.pl" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(28,27,24,0.1);border-radius:14px;padding:22px 26px;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),border-color 0.3s ease,box-shadow 0.3s ease" style-hover="border-color:#1c1b18;transform:translateY(-3px);box-shadow:0 16px 32px rgba(28,27,24,0.1)">
+            <span><span style="display:block;font-size:13px;opacity:0.55;margin-bottom:3px">E-mail</span><span style="font-family:'Newsreader',serif;font-size:22px">kontakt@arturgladosz.pl</span></span>
+            <span style={`color:${accent};font-size:22px`}>→</span>
+          </a>
+          <a href="https://wa.me/48667224896?text=Dzie%C5%84%20dobry" target="_blank" style="display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid rgba(28,27,24,0.1);border-radius:14px;padding:22px 26px;transition:transform 0.3s cubic-bezier(0.22,1,0.36,1),border-color 0.3s ease,box-shadow 0.3s ease" style-hover="border-color:#1c1b18;transform:translateY(-3px);box-shadow:0 16px 32px rgba(28,27,24,0.1)">
+            <span><span style="display:block;font-size:13px;opacity:0.55;margin-bottom:3px">WhatsApp</span><span style="font-family:'Newsreader',serif;font-size:22px">Napisz wiadomość</span></span>
+            <span style={`color:${accent};font-size:22px`}>→</span>
+          </a>
+          <div style="display:flex;align-items:center;gap:10px;padding:6px 4px;font-size:14.5px;opacity:0.6"><span style={`color:${accent}`}>◍</span> Mielec, woj. podkarpackie</div>
+        </div>
+      </div>
+    </section>
+
+    <footer style="border-top:1px solid rgba(28,27,24,0.1);background:#f0ede6">
+      <div style="max-width:1160px;margin:0 auto;padding:44px 28px;display:flex;flex-wrap:wrap;gap:24px;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="display:grid;place-items:center;width:36px;height:36px;border:1px solid #1c1b18;border-radius:50%;font-family:'Newsreader',serif;font-size:15px">AG</span>
+          <span style="font-size:14px;opacity:0.6">© 2026 Artur Gładosz · arturgladosz.pl</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:22px;font-size:14px;font-weight:500">
+          <a href="https://medi3.pl" target="_blank" style="opacity:0.7" style-hover="opacity:1">Fundacja Medi3</a>
+          <a href="/nieruchomosci" style="opacity:0.7" style-hover="opacity:1">Nieruchomości</a>
+          <a href="https://drzewo.arturgladosz.pl/" target="_blank" style="opacity:0.7" style-hover="opacity:1">Drzewo genealogiczne</a>
+          <a href="#kontakt" style="opacity:0.7" style-hover="opacity:1">Kontakt</a>
+          <a href="/regulaminy" style="opacity:0.7" style-hover="opacity:1">Regulaminy</a>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+</Base>

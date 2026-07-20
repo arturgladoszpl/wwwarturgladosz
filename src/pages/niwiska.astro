@@ -1,0 +1,144 @@
+---
+import Base from '../layouts/Base.astro';
+
+const stats = [
+  { k: '12,4 km', v: 'do Kolbuszowej' },
+  { k: '19,4 km', v: 'do Mielca' },
+  { k: '42,6 km', v: 'do Rzeszowa' },
+];
+const gallery = ['/images/niwiska-1.jpg', '/images/niwiska-2.jpg', '/images/niwiska-3.jpg', '/images/niwiska-4.jpg'];
+const plots = [
+  { name: 'Działka nr 1', area: '8,86 ara', badge: 'Dostępna', badgeBg: '#dde6ec', badgeCol: '#2f5d74', numbers: '1019/14 oraz 1353/11', desc: 'Doskonale usytuowana, o płaskiej powierzchni — daje możliwość szybkiej budowy, bez konieczności wyrównywania terenu.' },
+  { name: 'Działka nr 2', area: '11,28 ara', badge: 'Do dokupienia', badgeBg: '#efe4da', badgeCol: '#8a5a3c', numbers: '1019/13 oraz 1353/10', desc: 'Kształt zbliżony do prostokąta o wymiarach 25,44 m × 41,26 m — możliwość powiększenia inwestycji o sąsiednią parcelę.' },
+];
+const media = [
+  { k: 'Ujęcie wody', v: 'na działce' },
+  { k: 'Gaz', v: 'na działce obok, ok. 80 m' },
+  { k: 'Prąd', v: 'tak' },
+  { k: 'Kanalizacja', v: 'przydomowa oczyszczalnia lub kanalizacja' },
+  { k: 'Dostęp do drogi', v: 'bezpośredni, droga publiczna powiatowa' },
+];
+const infra = [
+  'Działki położone w niedalekim sąsiedztwie domów jednorodzinnych.',
+  'W pobliżu szkoła, boisko sportowe, plac zabaw i kościół.',
+  'W okolicy bar oraz różne sklepy.',
+  'Bliskość lasu — cisza, spokój i sielski klimat.',
+];
+---
+<Base title="Działki w gminie Niwiska — Artur Gładosz">
+  <div style="background:#f6f4ef;color:#1c1b18;min-height:100vh">
+
+    <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(10px);background:rgba(246,244,239,0.82);border-bottom:1px solid rgba(28,27,24,0.08)">
+      <div style="max-width:1000px;margin:0 auto;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:24px">
+        <a href="/" style="display:flex;align-items:center;gap:12px">
+          <span style="display:grid;place-items:center;width:40px;height:40px;border:1px solid #1c1b18;border-radius:50%;font-family:'Newsreader',serif;font-size:18px;letter-spacing:-0.5px;color:#1c1b18">AG</span>
+          <span style="font-family:'Newsreader',serif;font-size:19px;letter-spacing:-0.2px;color:#1c1b18">Artur Gładosz</span>
+        </a>
+        <a href="/nieruchomosci" style="display:inline-flex;align-items:center;gap:8px;font-size:14.5px;font-weight:600;color:#1c1b18">← Nieruchomości</a>
+      </div>
+    </header>
+
+    <section style="max-width:1000px;margin:0 auto;padding:64px 28px 44px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;color:#2f5d74;margin-bottom:16px">Nieruchomości · Gmina Niwiska</div>
+      <h1 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(38px,6vw,64px);line-height:1.02;letter-spacing:-1.4px;margin-bottom:22px">Działki w gminie Niwiska</h1>
+      <p style="font-size:18px;line-height:1.6;opacity:0.78;max-width:640px">Planujesz budowę domu w pięknej okolicy blisko miasta, a może szukasz działki pod inwestycję? Cisza, spokój i sielski klimat to nie jedyne atuty tej oferty — w okolicach Kolbuszowej, Mielca i Rzeszowa.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:30px;margin-top:36px;padding-top:30px;border-top:1px solid rgba(28,27,24,0.1)">
+        {stats.map((s) => (
+          <div>
+            <div style="font-family:'Newsreader',serif;font-size:30px;letter-spacing:-0.5px">{s.k}</div>
+            <div style="font-size:13.5px;opacity:0.6;margin-top:2px">{s.v}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section style="max-width:1000px;margin:0 auto;padding:0 28px 44px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px">
+        <div style="background:#fff;border:1px solid rgba(28,27,24,0.09);border-radius:16px;overflow:hidden">
+          <iframe src="https://maps.google.com/maps?q=50.23877390029451,21.63840472698212&z=15&output=embed" style="width:100%;height:320px;border:0;display:block" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <div style="padding:20px 24px">
+            <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:20px;margin-bottom:5px">Lokalizacja</h3>
+            <p style="font-size:14.5px;opacity:0.7;line-height:1.5">Gmina Niwiska, woj. podkarpackie · <a href="https://sip.gison.pl/niwiska_niwiska?zoom=18&lat=50.23877390029451&lng=21.63840472698212&l=3551,3557,3559,3560,3599,10830&b=3547" target="_blank" style="color:#2f5d74">System informacji przestrzennej ↗</a></p>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid rgba(28,27,24,0.09);border-radius:16px;overflow:hidden;display:flex;flex-direction:column">
+          <img src="/images/niwiska-5.png" alt="Podział działek nr 1 i nr 2" style="width:100%;height:320px;object-fit:cover;display:block" />
+          <div style="padding:20px 24px;border-top:1px solid rgba(28,27,24,0.09)">
+            <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:20px;margin-bottom:5px">Podział działek</h3>
+            <p style="font-size:14.5px;opacity:0.7;line-height:1.5">Działka nr 1 (39,2 m) oraz nr 2 (41,7 m), szerokość 22,5–25 m, dostęp do drogi asfaltowej.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="max-width:1000px;margin:0 auto;padding:0 28px 44px">
+      <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(24px,3vw,34px);letter-spacing:-0.6px;margin-bottom:22px">Galeria</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px">
+        {gallery.map((src) => (
+          <img src={src} alt="Działka Niwiska" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;border:1px solid rgba(28,27,24,0.09);display:block;transition:transform 0.5s cubic-bezier(0.22,1,0.36,1),box-shadow 0.4s ease" style-hover="transform:scale(1.03);box-shadow:0 20px 44px rgba(28,27,24,0.16)" />
+        ))}
+      </div>
+    </section>
+
+    <section style="max-width:1000px;margin:0 auto;padding:0 28px 20px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+        {plots.map((p) => (
+          <div style="background:#fff;border:1px solid rgba(28,27,24,0.09);border-radius:16px;padding:32px 30px;display:flex;flex-direction:column;gap:12px;transition:transform 0.35s cubic-bezier(0.22,1,0.36,1),box-shadow 0.35s ease,border-color 0.35s ease" style-hover="transform:translateY(-6px);box-shadow:0 22px 48px rgba(28,27,24,0.12);border-color:rgba(28,27,24,0.2)">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+              <h3 style="font-family:'Newsreader',serif;font-weight:500;font-size:24px">{p.name}</h3>
+              <span style={`font-size:13px;padding:5px 12px;border-radius:999px;background:${p.badgeBg};color:${p.badgeCol};font-weight:600`}>{p.badge}</span>
+            </div>
+            <div style="font-family:'Newsreader',serif;font-size:34px;letter-spacing:-0.5px">{p.area}</div>
+            <p style="font-size:15px;line-height:1.6;opacity:0.78">{p.desc}</p>
+            <div style="font-size:13.5px;opacity:0.6;margin-top:2px">Nr działek: {p.numbers}</div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section style="max-width:1000px;margin:0 auto;padding:44px 28px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px">
+        <div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(24px,3vw,34px);letter-spacing:-0.6px;margin-bottom:20px">Media</h2>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            {media.map((m) => (
+              <div style="display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid rgba(28,27,24,0.12)">
+                <span style="font-size:15px;font-weight:500">{m.k}</span>
+                <span style="font-size:15px;opacity:0.7;text-align:right">{m.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(24px,3vw,34px);letter-spacing:-0.6px;margin-bottom:20px">Infrastruktura i okolica</h2>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            {infra.map((i) => (
+              <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid rgba(28,27,24,0.12)">
+                <span style="color:#2f5d74;font-weight:700;font-family:'Newsreader',serif">·</span>
+                <span style="font-size:15px;line-height:1.5;opacity:0.85">{i}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section style="max-width:1000px;margin:0 auto;padding:0 28px 44px">
+      <div style="background:#1c1b18;color:#f6f4ef;border-radius:20px;padding:40px 44px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:24px">
+        <div style="max-width:560px">
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(26px,3.2vw,36px);line-height:1.06;letter-spacing:-0.8px;margin-bottom:12px">Zainteresowany działką?</h2>
+          <p style="font-size:16px;line-height:1.6;opacity:0.85">Status R (rolne), ale wydane są warunki zabudowy. Zadzwoń, chętnie odpowiem na pytania i umówię oglądanie.</p>
+        </div>
+        <a href="tel:+48667224896" style="white-space:nowrap;background:#f6f4ef;color:#1c1b18;padding:15px 28px;border-radius:999px;font-weight:600;font-size:15.5px;transition:background 0.3s ease,transform 0.3s cubic-bezier(0.22,1,0.36,1)" style-hover="background:#dde6ec;transform:translateY(-3px)">Zadzwoń · 667 224 896</a>
+      </div>
+    </section>
+
+    <footer style="border-top:1px solid rgba(28,27,24,0.1);background:#f0ede6">
+      <div style="max-width:1000px;margin:0 auto;padding:34px 28px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;opacity:0.6">© 2026 Artur Gładosz · arturgladosz.pl</span>
+        <a href="/" style="font-size:14px;font-weight:500;color:#2f5d74">← Strona główna</a>
+      </div>
+    </footer>
+
+  </div>
+</Base>

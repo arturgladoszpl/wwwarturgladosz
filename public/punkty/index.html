@@ -53,8 +53,8 @@ button:focus-visible,input:focus-visible{outline:3px solid #2F6FD6;outline-offse
 .add,.sub{font:inherit;font-size:1.6rem;font-weight:800;width:58px;border-radius:12px;cursor:pointer;line-height:1}
 .add{background:var(--c);color:var(--f);border:0}
 .sub{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
-.hist{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.chip{font:inherit;font-size:.92rem;font-variant-numeric:tabular-nums;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:4px 9px;cursor:pointer}
+.hist{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:12px}
+.chip{font:inherit;font-size:.92rem;font-variant-numeric:tabular-nums;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:4px 2px;cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 span.chip{cursor:default}
 .hint{color:var(--muted);font-size:.82rem;margin:8px 0 0}
 .empty{text-align:center;padding:48px 16px;color:var(--muted)}

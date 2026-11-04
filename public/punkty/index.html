@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#E6ECF1;--surface:#FFFFFF;--ink:#17212B;--muted:#5B6976;--line:#D2DAE1;--soft:#F1F4F7;
+  --bg:#E6ECF1;--surface:#FFFFFF;--ink:#17212B;--muted:#5B6976;--line:#D2DAE1;--soft:#F1F4F7;--ok:#2E9E5B;--bad:#D64545;
   color-scheme:light;box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 }
@@ -25,12 +25,13 @@
 }
 :root[data-theme="dark"]{--bg:#10161D;--surface:#1A232D;--ink:#EDF1F5;--muted:#93A1AE;--line:#2A3642;--soft:#222D38;color-scheme:dark}
 *,*::before,*::after{box-sizing:inherit}
+[hidden]{display:none!important}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 main{max-width:560px;margin:0 auto;padding:16px 14px 48px}
 header{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
 h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:0;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.actions{display:flex;gap:6px}
+.actions{display:flex;flex-wrap:wrap;gap:6px}
 .btn{font:inherit;font-weight:600;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 13px;cursor:pointer}
 .btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .btn.wide{width:100%;text-align:left;border-radius:12px;padding:12px 14px}
@@ -38,11 +39,13 @@ button:focus-visible,input:focus-visible{outline:3px solid #2F6FD6;outline-offse
 .list{display:flex;flex-direction:column;gap:10px}
 .card{background:var(--surface);border-radius:16px;border:1px solid var(--line);overflow:hidden;position:relative}
 .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:var(--c)}
+.card.me{border-color:var(--c);border-width:2px}
 .card-head{display:flex;align-items:center;gap:12px;padding:14px 16px 14px 24px;width:100%;background:none;border:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .name{flex:1;min-width:0}
 .name b{display:block;font-size:1.15rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .name small{color:var(--muted);font-size:.88rem}
 .lead .name small{color:var(--ink);font-weight:700}
+.tag{display:inline-block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:var(--c);color:var(--f);border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:2px}
 .total{font-size:2.5rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
 .body{padding:0 16px 16px 24px}
 .entry-row{display:flex;gap:8px}
@@ -52,12 +55,19 @@ button:focus-visible,input:focus-visible{outline:3px solid #2F6FD6;outline-offse
 .sub{background:var(--soft);color:var(--ink);border:1px solid var(--line)}
 .hist{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .chip{font:inherit;font-size:.92rem;font-variant-numeric:tabular-nums;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:8px;padding:4px 9px;cursor:pointer}
+span.chip{cursor:default}
 .hint{color:var(--muted);font-size:.82rem;margin:8px 0 0}
 .empty{text-align:center;padding:48px 16px;color:var(--muted)}
 .empty p{margin:0 0 16px;font-size:1.05rem}
+.netbar{display:flex;align-items:center;gap:8px;width:100%;margin:-6px 0 14px;padding:9px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:.92rem;text-align:left;cursor:pointer}
+.netbar b{font-variant-numeric:tabular-nums;letter-spacing:.06em}
+.netbar .sp{flex:1}
+.led{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
+.led.off{background:var(--bad)}
 dialog{border:0;border-radius:20px;padding:20px;background:var(--surface);color:var(--ink);width:min(92vw,420px);max-height:85vh}
 dialog::backdrop{background:rgba(10,15,20,.55)}
 dialog h2{margin:0 0 12px;font-size:1.3rem}
+dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 .prow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .dot{width:16px;height:16px;border-radius:50%;background:var(--c);flex:none}
 .prow input,.newp input,.field input{flex:1;min-width:0;width:100%;font:inherit;font-size:1.05rem;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--soft);color:var(--ink)}
@@ -69,8 +79,15 @@ dialog h2{margin:0 0 12px;font-size:1.3rem}
 .field span{display:block;font-size:.9rem;color:var(--muted);margin-bottom:6px}
 .stack{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
 .stack small{display:block;color:var(--muted);font-weight:400;font-size:.82rem;margin-top:2px}
+.pick{display:flex;align-items:center;gap:10px}
+.pick .dot{background:var(--c)}
 .status{min-height:1.2em;font-size:.9rem;margin:0 0 12px;color:var(--muted)}
-.dlg-foot{display:flex;justify-content:flex-end}
+.dlg-foot{display:flex;justify-content:flex-end;gap:8px}
+.code{font-size:2.6rem;font-weight:800;letter-spacing:.12em;text-align:center;margin:4px 0 10px;font-variant-numeric:tabular-nums}
+.qr{display:flex;justify-content:center;margin:0 0 14px}
+.qr:empty{display:none}
+.qr svg{width:200px;height:200px;background:#fff;border-radius:12px;padding:8px}
+.join{text-transform:uppercase;letter-spacing:.1em;font-weight:700}
 </style>
 </head>
 <body>
@@ -81,8 +98,10 @@ dialog h2{margin:0 0 12px;font-size:1.3rem}
       <button class="btn" id="playersBtn">Gracze</button>
       <button class="btn" id="fileBtn">Plik</button>
       <button class="btn" id="resetBtn">Nowa gra</button>
+      <button class="btn" id="shareBtn">Wspólna gra</button>
     </div>
   </header>
+  <button class="netbar" id="netbar" hidden><span class="led" id="led"></span><span>Wspólna gra <b id="netCode"></b></span><span class="sp"></span><span id="netInfo"></span></button>
   <div class="list" id="list"></div>
 </main>
 
@@ -111,15 +130,61 @@ dialog h2{margin:0 0 12px;font-size:1.3rem}
   <div class="dlg-foot"><button class="btn" id="fileDone">Gotowe</button></div>
 </dialog>
 
+<dialog id="shareDlg">
+  <h2>Wspólna gra</h2>
+  <div id="shareOff">
+    <p>Każdy otwiera grę na swoim telefonie, widzi wyniki wszystkich i sam wpisuje swoje punkty.</p>
+    <div class="stack">
+      <button class="btn wide" id="createGame">Utwórz wspólną grę<small>Obecni gracze i punkty przejdą do wspólnej gry</small></button>
+    </div>
+    <form class="newp" id="joinForm">
+      <input id="joinCode" class="join" placeholder="Kod gry" maxlength="6" autocomplete="off" autocapitalize="characters" aria-label="Kod gry">
+      <button class="btn primary" type="submit">Dołącz</button>
+    </form>
+  </div>
+  <div id="shareOn" hidden>
+    <p>Pozostali gracze skanują kod QR albo wpisują kod gry na stronie arturgladosz.pl/punkty.</p>
+    <div class="code" id="shareCode"></div>
+    <div class="qr" id="qr"></div>
+    <div class="stack">
+      <button class="btn wide" id="shareLink">Wyślij link do gry</button>
+      <button class="btn wide" id="whoBtn">Zmień, kim jestem</button>
+      <button class="btn wide" id="leaveGame">Wyjdź ze wspólnej gry<small>Wrócisz do gry zapisanej na tym telefonie</small></button>
+    </div>
+  </div>
+  <p class="status" id="shareStatus" role="status"></p>
+  <div class="dlg-foot"><button class="btn" id="shareDone">Gotowe</button></div>
+</dialog>
+
+<dialog id="meDlg">
+  <h2>Kim jesteś?</h2>
+  <p>Wybierz siebie, żeby wpisywać swoje punkty.</p>
+  <div class="stack" id="meList"></div>
+  <form class="newp" id="meForm">
+    <input id="meName" placeholder="Albo dodaj siebie" maxlength="24" autocomplete="off">
+    <button class="btn primary" type="submit">Dodaj</button>
+  </form>
+  <div class="dlg-foot"><button class="btn" id="meSkip">Tylko oglądam</button></div>
+</dialog>
+
 <script>
 const KEY='licznik-punktow-v1';
+const NET_KEY='licznik-punktow-online';
+const ME_KEY='licznik-punktow-ja-';
+const API='/api/punkty/games';
+const POLL_MS=2000;
 const COLORS=[
   {c:'#D64545',f:'#fff'},{c:'#2F6FD6',f:'#fff'},{c:'#E8B21E',f:'#1A1A1A'},{c:'#2E9E5B',f:'#fff'},
   {c:'#8A4FC9',f:'#fff'},{c:'#E4772A',f:'#fff'},{c:'#1FA3A3',f:'#fff'},{c:'#C2408A',f:'#fff'}
 ];
 let state={title:'',players:[],open:null};
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.players))state=Object.assign({title:''},s);}catch(e){}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+let local=state;
+/* net: null w grze na tym telefonie; we wspólnej grze {code,rev,me,pending,ok,unlocked} */
+let net=null;
+function save(){if(net)return;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+  set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
 
 const $=id=>document.getElementById(id);
 const total=p=>p.entries.reduce((a,b)=>a+b,0);
@@ -128,13 +193,19 @@ const signed=n=>n<0?'−'+Math.abs(n):(n===0?'0':'+'+n);
 function el(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e;}
 function colorOf(p){return COLORS[p.color%COLORS.length];}
 const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+let seq=0;const uid=()=>newId()+(seq++).toString(36);
+const canEdit=p=>!net||p.id===net.me||net.unlocked.has(p.id);
 
 function render(focusId){
   $('title').textContent=state.title||'Punkty';
-  const list=$('list');list.innerHTML='';
+  const list=$('list');
+  // Odświeżenie z serwera nie może zgubić tego, co ktoś właśnie wpisuje.
+  const a=document.activeElement,keep=a&&a.tagName==='INPUT'&&list.contains(a)?{id:a.id,v:a.value}:null;
+  list.innerHTML='';
+  renderNet();
   if(!state.players.length){
-    const e=el('div','empty');e.appendChild(el('p',null,'Dodaj graczy albo wczytaj zapisaną grę.'));
-    const b=el('button','btn primary','Dodaj graczy');b.onclick=openDlg;e.appendChild(b);
+    const e=el('div','empty');e.appendChild(el('p',null,net?'Nikt jeszcze nie dołączył do tej gry.':'Dodaj graczy albo wczytaj zapisaną grę.'));
+    const b=el('button','btn primary',net?'Dodaj siebie':'Dodaj graczy');b.onclick=net?openMe:openDlg;e.appendChild(b);
     list.appendChild(e);return;
   }
   const totals=state.players.map(total);
@@ -142,37 +213,48 @@ function render(focusId){
   const max=Math.max(...totals);
   state.players.forEach(p=>{
     const col=colorOf(p),t=total(p),open=state.open===p.id,lead=anyScore&&t===max;
-    const card=el('div','card'+(lead?' lead':''));
+    const mine=net&&p.id===net.me,edit=canEdit(p);
+    const card=el('div','card'+(lead?' lead':'')+(mine?' me':''));
     card.style.setProperty('--c',col.c);card.style.setProperty('--f',col.f);
     const head=el('button','card-head');head.setAttribute('aria-expanded',open);
-    const nm=el('div','name');nm.appendChild(el('b',null,p.name));
+    const nm=el('div','name');const b=el('b',null,p.name);if(mine)b.appendChild(el('span','tag','ty'));nm.appendChild(b);
     const last=p.entries[p.entries.length-1];
-    nm.appendChild(el('small',null,lead?'prowadzi':(p.entries.length?'ostatnio '+signed(last):'dotknij, by dodać punkty')));
+    nm.appendChild(el('small',null,lead?'prowadzi':(p.entries.length?'ostatnio '+signed(last):(edit?'dotknij, by dodać punkty':'jeszcze bez punktów'))));
     head.appendChild(nm);head.appendChild(el('div','total',fmt(t)));
     head.onclick=()=>{state.open=open?null:p.id;save();render(open?null:p.id);};
     card.appendChild(head);
     if(open){
       const body=el('div','body');
-      const row=el('div','entry-row');
-      const inp=el('input');inp.type='text';inp.inputMode='numeric';inp.pattern='[0-9]*';
-      inp.placeholder='Ile punktów?';inp.id='in-'+p.id;inp.setAttribute('aria-label','Punkty dla '+p.name);
-      const add=el('button','add','+');add.setAttribute('aria-label','Dodaj punkty');
-      const sub=el('button','sub','−');sub.setAttribute('aria-label','Odejmij punkty');
-      const commit=sign=>{const v=parseInt(inp.value.replace(/[^0-9]/g,''),10);if(isNaN(v)){inp.focus();return;}p.entries.push(v===0?0:sign*v);save();render(p.id);};
-      add.onclick=()=>commit(1);sub.onclick=()=>commit(-1);
-      inp.onkeydown=e=>{if(e.key==='Enter')commit(1);};
-      row.append(inp,add,sub);body.appendChild(row);
+      if(edit){
+        const row=el('div','entry-row');
+        const inp=el('input');inp.type='text';inp.inputMode='numeric';inp.pattern='[0-9]*';
+        inp.placeholder='Ile punktów?';inp.id='in-'+p.id;inp.setAttribute('aria-label','Punkty dla '+p.name);
+        const add=el('button','add','+');add.setAttribute('aria-label','Dodaj punkty');
+        const sub=el('button','sub','−');sub.setAttribute('aria-label','Odejmij punkty');
+        const commit=sign=>{const v=parseInt(inp.value.replace(/[^0-9]/g,''),10);if(isNaN(v)){inp.focus();return;}inp.value='';addEntry(p,v===0?0:sign*v);render(p.id);};
+        add.onclick=()=>commit(1);sub.onclick=()=>commit(-1);
+        inp.onkeydown=e=>{if(e.key==='Enter')commit(1);};
+        row.append(inp,add,sub);body.appendChild(row);
+      }else{
+        const u=el('button','btn','Wpisz punkty za: '+p.name);
+        u.onclick=()=>{net.unlocked.add(p.id);render(p.id);};
+        body.appendChild(u);
+      }
       if(p.entries.length){
         const h=el('div','hist');
-        p.entries.forEach((v,i)=>{const c=el('button','chip',signed(v));
-          c.onclick=()=>{if(confirm('Usunąć wpis '+signed(v)+'?')){p.entries.splice(i,1);save();render(p.id);}};h.appendChild(c);});
-        body.appendChild(h);body.appendChild(el('p','hint','Dotknij wpisu, żeby go usunąć.'));
+        p.entries.forEach((v,i)=>{
+          if(!edit){h.appendChild(el('span','chip',signed(v)));return;}
+          const c=el('button','chip',signed(v));
+          c.onclick=()=>{if(confirm('Usunąć wpis '+signed(v)+'?')){removeEntry(p,i);render(p.id);}};h.appendChild(c);});
+        body.appendChild(h);
+        if(edit)body.appendChild(el('p','hint','Dotknij wpisu, żeby go usunąć.'));
       }
       card.appendChild(body);
     }
     list.appendChild(card);
   });
-  if(focusId){const i=$('in-'+focusId);if(i)i.focus();}
+  if(keep){const i=$(keep.id);if(i){i.value=keep.v;i.focus();}}
+  else if(focusId){const i=$('in-'+focusId);if(i)i.focus();}
 }
 
 function renderPlayers(){
@@ -181,9 +263,9 @@ function renderPlayers(){
     const r=el('div','prow');r.style.setProperty('--c',colorOf(p).c);
     r.appendChild(el('span','dot'));
     const i=el('input');i.value=p.name;i.maxLength=24;i.setAttribute('aria-label','Imię gracza');
-    i.oninput=()=>{p.name=i.value||'Gracz';save();render();};
+    i.oninput=()=>{renamePlayer(p,i.value||'Gracz');render();};
     const d=el('button','del','Usuń');
-    d.onclick=()=>{if(confirm('Usunąć gracza '+p.name+'?')){state.players.splice(idx,1);if(state.open===p.id)state.open=null;save();renderPlayers();render();}};
+    d.onclick=()=>{if(confirm('Usunąć gracza '+p.name+'?')){removePlayer(p);renderPlayers();render();}};
     const up=el('button','mv','↑');up.dataset.d='-1';up.setAttribute('aria-label','Przesuń '+p.name+' wyżej');up.disabled=idx===0;up.onclick=()=>movePlayer(idx,-1);
     const dn=el('button','mv','↓');dn.dataset.d='1';dn.setAttribute('aria-label','Przesuń '+p.name+' niżej');dn.disabled=idx===state.players.length-1;dn.onclick=()=>movePlayer(idx,1);
     r.append(i,up,dn,d);pl.appendChild(r);
@@ -191,7 +273,9 @@ function renderPlayers(){
 }
 function movePlayer(i,dir){
   const a=state.players,j=i+dir;if(j<0||j>=a.length)return;
-  [a[i],a[j]]=[a[j],a[i]];save();renderPlayers();render();
+  [a[i],a[j]]=[a[j],a[i]];save();
+  send('PUT','/order',{ids:a.map(p=>p.id)});
+  renderPlayers();render();
   const b=document.querySelector('#plist .prow:nth-child('+(j+1)+') .mv[data-d="'+dir+'"]');
   if(b&&!b.disabled)b.focus();
 }
@@ -200,21 +284,225 @@ $('playersBtn').onclick=openDlg;
 $('doneBtn').onclick=()=>$('dlg').close();
 $('newForm').onsubmit=e=>{
   e.preventDefault();const n=$('newName').value.trim();if(!n)return;
-  const used=state.players.map(p=>p.color);
-  let color=COLORS.findIndex((_,i)=>!used.includes(i));if(color<0)color=state.players.length%COLORS.length;
-  state.players.push({id:newId(),name:n,color,entries:[]});
-  $('newName').value='';save();renderPlayers();render();$('newName').focus();
+  addPlayer(n);
+  $('newName').value='';renderPlayers();render();$('newName').focus();
 };
 $('resetBtn').onclick=()=>{
   if(!state.players.length)return;
-  if(confirm('Wyzerować punkty wszystkich graczy?')){state.players.forEach(p=>p.entries=[]);state.open=null;save();render();}
+  if(confirm(net?'Wyzerować punkty wszystkich graczy? Zmiana obejmie wszystkie telefony w tej grze.':'Wyzerować punkty wszystkich graczy?')){
+    state.players.forEach(p=>{p.entries=[];if(net)p.eids=[];});state.open=null;save();send('POST','/reset');render();
+  }
 };
+
+/* ---------- Zmiany w grze: lokalnie zapis w telefonie, we wspólnej grze także na serwerze ---------- */
+function addEntry(p,v){
+  p.entries.push(v);save();
+  if(net){const id=uid();p.eids.push(id);send('POST','/players/'+p.id+'/entries',{id,value:v});}
+}
+function removeEntry(p,i){
+  p.entries.splice(i,1);save();
+  if(net){const id=p.eids.splice(i,1)[0];send('DELETE','/entries/'+id);}
+}
+function addPlayer(name){
+  const used=state.players.map(p=>p.color);
+  let color=COLORS.findIndex((_,i)=>!used.includes(i));if(color<0)color=state.players.length%COLORS.length;
+  const p={id:net?uid():newId(),name,color,entries:[]};
+  if(net)p.eids=[];
+  state.players.push(p);save();
+  send('POST','/players',{id:p.id,name});
+  return p;
+}
+const renameTimers={};
+function renamePlayer(p,name){
+  p.name=name;save();
+  if(!net)return;
+  clearTimeout(renameTimers[p.id]);
+  renameTimers[p.id]=setTimeout(()=>send('PATCH','/players/'+p.id,{name:p.name}),500);
+}
+function removePlayer(p){
+  const idx=state.players.indexOf(p);if(idx<0)return;
+  state.players.splice(idx,1);if(state.open===p.id)state.open=null;save();
+  send('DELETE','/players/'+p.id);
+  if(net&&net.me===p.id){net.me=null;store.set(ME_KEY+net.code,null);}
+}
+let titleTimer;
+function setTitle(t){
+  state.title=t;save();
+  if(!net)return;
+  clearTimeout(titleTimer);titleTimer=setTimeout(()=>send('PATCH','',{title:state.title}),500);
+}
+
+/* ---------- Wspólna gra: serwer, odświeżanie co kilka sekund ---------- */
+async function api(method,path,data){
+  const r=await fetch(API+path,{method,headers:data?{'content-type':'application/json'}:{},body:data?JSON.stringify(data):undefined,cache:'no-store'});
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok){const err=new Error(j&&j.error||'Błąd połączenia.');err.status=r.status;throw err;}
+  return j;
+}
+function fromServer(g){
+  const open=state.open;
+  state={title:g.title||'',open,players:g.players.map(p=>({id:p.id,name:p.name,color:p.color,
+    entries:p.entries.map(e=>e.value),eids:p.entries.map(e=>e.id)}))};
+  if(!state.players.some(p=>p.id===state.open))state.open=null;
+  net.rev=g.rev;
+}
+let queue=Promise.resolve();
+function send(method,path,data){
+  if(!net)return;
+  const n=net;n.pending++;
+  queue=queue.then(()=>api(method,'/'+n.code+path,data)).then(g=>{
+    n.ok=true;
+    if(net===n&&n.pending===1){fromServer(g);refreshViews();}
+  },e=>{
+    n.ok=false;flash(e.message);
+    if(net===n)setTimeout(poll,0);
+  }).finally(()=>{n.pending--;if(net===n)renderNet();});
+}
+async function poll(){
+  const n=net;if(!n||n.pending||n.polling)return;
+  n.polling=true;
+  try{
+    const g=await api('GET','/'+n.code+'?rev='+n.rev);
+    n.ok=true;
+    if(net===n&&!n.pending&&!g.same){fromServer(g);refreshViews();}
+  }catch(e){
+    n.ok=false;
+    if(e.status===404&&net===n){leaveGame();flash('Ta wspólna gra już nie istnieje.');}
+  }finally{n.polling=false;if(net===n)renderNet();}
+}
+function refreshViews(){
+  render();
+  const a=document.activeElement;
+  if($('dlg').open&&!(a&&$('plist').contains(a)))renderPlayers();
+  if($('meDlg').open)renderMe();
+  if(net&&net.me&&!state.players.some(p=>p.id===net.me)){net.me=null;store.set(ME_KEY+net.code,null);}
+}
+setInterval(()=>{if(!document.hidden)poll();},POLL_MS);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
+
+function renderNet(){
+  $('netbar').hidden=!net;
+  $('shareBtn').hidden=!!net;
+  if(!net)return;
+  $('netCode').textContent=net.code;
+  $('led').classList.toggle('off',!net.ok);
+  const me=state.players.find(p=>p.id===net.me);
+  $('netInfo').textContent=!net.ok?'brak połączenia':(me?'grasz jako '+me.name:'tylko oglądasz');
+}
+let flashTimer;
+function flash(t){
+  $('shareStatus').textContent=t;
+  if(!$('shareDlg').open){$('netInfo').textContent=t;clearTimeout(flashTimer);flashTimer=setTimeout(renderNet,4000);}
+}
+
+async function enterGame(code,g){
+  if(!net)local=state;
+  net={code,rev:0,me:store.get(ME_KEY+code),pending:0,ok:true,unlocked:new Set()};
+  state={title:'',players:[],open:null};
+  fromServer(g);
+  store.set(NET_KEY,code);
+  const u=new URL(location.href);u.searchParams.set('g',code);history.replaceState(null,'',u);
+  if(!state.players.some(p=>p.id===net.me))net.me=null;
+  if(net.me)state.open=net.me;
+  render();
+  if(!net.me)openMe();
+}
+function leaveGame(){
+  if(!net)return;
+  store.set(NET_KEY,null);
+  net=null;state=local;
+  const u=new URL(location.href);u.searchParams.delete('g');history.replaceState(null,'',u);
+  render();
+}
+async function joinGame(code){
+  code=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code.length!==6){$('shareStatus').textContent='Kod gry ma 6 znaków.';return false;}
+  try{const g=await api('GET','/'+code);await enterGame(code,g);return true;}
+  catch(e){
+    if(e.status===404){flash('Nie ma gry o kodzie '+code+'.');if(store.get(NET_KEY)===code)store.set(NET_KEY,null);}
+    else flash(e.message);
+    return false;
+  }
+}
+
+/* Dialog „Wspólna gra” */
+function shareUrl(){return location.origin+location.pathname+'?g='+net.code;}
+function openShare(){
+  $('shareStatus').textContent='';
+  $('shareOff').hidden=!!net;$('shareOn').hidden=!net;
+  if(net){$('shareCode').textContent=net.code;drawQr();}
+  $('shareDlg').showModal();
+}
+$('shareBtn').onclick=openShare;
+$('netbar').onclick=openShare;
+$('shareDone').onclick=()=>$('shareDlg').close();
+$('createGame').onclick=async()=>{
+  const b=$('createGame');b.disabled=true;$('shareStatus').textContent='Tworzę grę…';
+  try{
+    const g=await api('POST','',{title:state.title||'',players:state.players.map(p=>({id:p.id,name:p.name,color:p.color,
+      entries:p.entries.map(v=>({id:uid(),value:v}))}))});
+    await enterGame(g.id,g);
+    if($('meDlg').open){net.justCreated=true;$('shareDlg').close();}else openShare();
+  }catch(e){$('shareStatus').textContent=e.message;}
+  finally{b.disabled=false;}
+};
+$('joinForm').onsubmit=async e=>{
+  e.preventDefault();
+  if(await joinGame($('joinCode').value)){$('joinCode').value='';$('shareDlg').close();}
+};
+$('shareLink').onclick=async()=>{
+  const url=shareUrl();
+  if(navigator.share){try{await navigator.share({title:'Liczenie punktów',text:'Dołącz do gry, kod '+net.code,url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(url);$('shareStatus').textContent='Skopiowano link: '+url;}
+  catch(e){$('shareStatus').textContent=url;}
+};
+$('whoBtn').onclick=()=>{$('shareDlg').close();openMe();};
+$('leaveGame').onclick=()=>{
+  if(!confirm('Wyjść ze wspólnej gry? Gra zostanie na serwerze i możesz do niej wrócić z tym samym kodem.'))return;
+  leaveGame();$('shareDlg').close();
+};
+let qrLib=null;
+function loadQr(){
+  if(!qrLib)qrLib=new Promise((ok,no)=>{const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    s.onload=()=>ok(window.qrcode);s.onerror=()=>{qrLib=null;no();};document.head.appendChild(s);});
+  return qrLib;
+}
+async function drawQr(){
+  const box=$('qr');box.innerHTML='';
+  try{const qrcode=await loadQr();const q=qrcode(0,'M');q.addData(shareUrl());q.make();
+    box.innerHTML=q.createSvgTag({cellSize:4,margin:0,scalable:true});
+    box.firstElementChild.setAttribute('aria-label','Kod QR z linkiem do gry');
+  }catch(e){}
+}
+
+/* Dialog „Kim jesteś?” */
+function renderMe(){
+  const l=$('meList');l.innerHTML='';
+  state.players.forEach(p=>{
+    const b=el('button','btn wide pick');b.style.setProperty('--c',colorOf(p).c);
+    b.appendChild(el('span','dot'));b.appendChild(el('span',null,p.name+(p.id===net.me?' (ty)':'')));
+    b.onclick=()=>setMe(p.id);l.appendChild(b);
+  });
+}
+function openMe(){if(!net)return;renderMe();$('meName').value='';$('meDlg').showModal();}
+function setMe(id){
+  net.me=id;store.set(ME_KEY+net.code,id);
+  if(id)state.open=id;
+  $('meDlg').close();render(id);
+  if(net.justCreated){net.justCreated=false;openShare();}
+}
+$('meForm').onsubmit=e=>{
+  e.preventDefault();const n=$('meName').value.trim();if(!n)return;
+  const p=addPlayer(n);setMe(p.id);
+};
+$('meSkip').onclick=()=>setMe(null);
 
 /* ---------- Plik: zapis, wczytanie, eksport ---------- */
 const status=t=>{$('status').textContent=t;};
 $('fileBtn').onclick=()=>{$('gameName').value=state.title||'';status('');$('fileDlg').showModal();};
 $('fileDone').onclick=()=>$('fileDlg').close();
-$('gameName').oninput=e=>{state.title=e.target.value.trim();save();render();};
+$('gameName').oninput=e=>{setTitle(e.target.value.trim());render();};
 
 function stamp(){const d=new Date(),z=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes());}
@@ -253,10 +541,13 @@ $('saveCsv').onclick=()=>{
   const head=['Gracz'];for(let i=1;i<=n;i++)head.push('Wpis '+i);head.push('Suma');
   const rows=[head.map(q).join(';')];
   state.players.forEach(p=>{const r=[p.name];for(let i=0;i<n;i++)r.push(i<p.entries.length?p.entries[i]:'');r.push(total(p));rows.push(r.map(q).join(';'));});
-  offerFile(baseName()+'.csv','\uFEFF'+rows.join('\r\n'),'text/csv');
+  offerFile(baseName()+'.csv','﻿'+rows.join('\r\n'),'text/csv');
 };
 
-$('loadJson').onclick=()=>{$('fileInput').value='';$('fileInput').click();};
+$('loadJson').onclick=()=>{
+  if(net){status('We wspólnej grze nie można wczytać pliku. Wyjdź z niej albo wczytaj plik i utwórz nową wspólną grę.');return;}
+  $('fileInput').value='';$('fileInput').click();
+};
 $('fileInput').onchange=async e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
   try{
@@ -271,11 +562,15 @@ $('fileInput').onchange=async e=>{
     const hasScores=state.players.some(p=>p.entries.length);
     if(hasScores&&!confirm('Wczytać grę z pliku? Obecne wyniki zostaną zastąpione.')){status('Anulowano wczytywanie.');return;}
     state={title:typeof obj.title==='string'?obj.title.slice(0,40):'',players,open:null};
-    save();render();$('gameName').value=state.title;status('Wczytano grę z pliku '+f.name+'.');
+    local=state;save();render();$('gameName').value=state.title;status('Wczytano grę z pliku '+f.name+'.');
   }catch(err){status('To nie jest plik zapisu z tego licznika.');}
 };
 
 render();
+{
+  const code=new URLSearchParams(location.search).get('g')||store.get(NET_KEY);
+  if(code)joinGame(code);
+}
 </script>
 </body>
 </html>

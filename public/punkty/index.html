@@ -219,7 +219,7 @@ function render(focusId){
     const head=el('button','card-head');head.setAttribute('aria-expanded',open);
     const nm=el('div','name');const b=el('b',null,p.name);if(mine)b.appendChild(el('span','tag','ty'));nm.appendChild(b);
     const last=p.entries[p.entries.length-1];
-    nm.appendChild(el('small',null,lead?'prowadzi':(p.entries.length?'ostatnio '+signed(last):(edit?'dotknij, by dodać punkty':'jeszcze bez punktów'))));
+    nm.appendChild(el('small',null,p.entries.length?'ostatnio '+signed(last):(edit?'dotknij, by dodać punkty':'jeszcze bez punktów')));
     head.appendChild(nm);head.appendChild(el('div','total',fmt(t)));
     head.onclick=()=>{state.open=open?null:p.id;save();render(open?null:p.id);};
     card.appendChild(head);

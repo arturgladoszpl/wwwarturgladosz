@@ -64,6 +64,7 @@ span.chip{cursor:default}
 .netbar .sp{flex:1}
 .led{width:10px;height:10px;border-radius:50%;background:var(--ok);flex:none}
 .led.off{background:var(--bad)}
+.led.idle{background:var(--muted)}
 dialog{border:0;border-radius:20px;padding:20px;background:var(--surface);color:var(--ink);width:min(92vw,420px);max-height:85vh}
 dialog::backdrop{background:rgba(10,15,20,.55)}
 dialog h2{margin:0 0 12px;font-size:1.3rem}
@@ -88,6 +89,23 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 .qr:empty{display:none}
 .qr svg{width:200px;height:200px;background:#fff;border-radius:12px;padding:8px}
 .join{text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+#histDlg{width:min(94vw,520px)}
+#histDlg h3{margin:18px 0 8px;font-size:1.05rem}
+#histGame h3:first-child{margin-top:4px}
+.stats{width:100%;border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.stats th,.stats td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:right}
+.stats th{color:var(--muted);font-weight:600;font-size:.8rem}
+.stats th:first-child,.stats td:first-child{text-align:left}
+.stats td:first-child{font-weight:700}
+.stats .dot{display:inline-block;width:10px;height:10px;margin-right:6px;vertical-align:0}
+.round{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:var(--soft)}
+.round-head{display:flex;align-items:center;gap:8px;font-size:.85rem;color:var(--muted)}
+.round-head span{flex:1}
+.round-head .del{padding:2px 4px}
+.round-res{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:4px;font-variant-numeric:tabular-nums}
+.round-res .win{font-weight:800}
+.games .btn small{display:block;color:var(--muted);font-weight:400;font-size:.82rem;margin-top:2px}
+.muted{color:var(--muted);font-size:.92rem;margin:0}
 </style>
 </head>
 <body>
@@ -98,10 +116,10 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
       <button class="btn" id="playersBtn">Gracze</button>
       <button class="btn" id="fileBtn">Plik</button>
       <button class="btn" id="resetBtn">Nowa gra</button>
-      <button class="btn" id="shareBtn">Wspólna gra</button>
+      <button class="btn" id="histBtn">Historia</button>
     </div>
   </header>
-  <button class="netbar" id="netbar" hidden><span class="led" id="led"></span><span>Wspólna gra <b id="netCode"></b></span><span class="sp"></span><span id="netInfo"></span></button>
+  <button class="netbar" id="netbar"><span class="led" id="led"></span><span id="netMode">Gra offline</span><span class="sp"></span><span id="netInfo"></span></button>
   <div class="list" id="list"></div>
 </main>
 
@@ -131,11 +149,12 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 </dialog>
 
 <dialog id="shareDlg">
-  <h2>Wspólna gra</h2>
+  <h2>Gra online</h2>
   <div id="shareOff">
-    <p>Każdy otwiera grę na swoim telefonie, widzi wyniki wszystkich i sam wpisuje swoje punkty.</p>
+    <p>Teraz grasz offline: wyniki są tylko na tym telefonie i nie potrzebujesz internetu.</p>
+    <p>W grze online każdy otwiera grę na swoim telefonie, widzi wyniki wszystkich i sam wpisuje swoje punkty. Rundy trafiają do historii.</p>
     <div class="stack">
-      <button class="btn wide" id="createGame">Utwórz wspólną grę<small>Obecni gracze i punkty przejdą do wspólnej gry</small></button>
+      <button class="btn wide" id="createGame">Utwórz grę online<small>Obecni gracze i punkty przejdą do gry online</small></button>
     </div>
     <form class="newp" id="joinForm">
       <input id="joinCode" class="join" placeholder="Kod gry" maxlength="6" autocomplete="off" autocapitalize="characters" aria-label="Kod gry">
@@ -149,7 +168,7 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
     <div class="stack">
       <button class="btn wide" id="shareLink">Wyślij link do gry</button>
       <button class="btn wide" id="whoBtn">Zmień, kim jestem</button>
-      <button class="btn wide" id="leaveGame">Wyjdź ze wspólnej gry<small>Wrócisz do gry zapisanej na tym telefonie</small></button>
+      <button class="btn wide" id="leaveGame">Przejdź do gry offline<small>Wrócisz do gry zapisanej na tym telefonie</small></button>
     </div>
   </div>
   <p class="status" id="shareStatus" role="status"></p>
@@ -167,10 +186,20 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
   <div class="dlg-foot"><button class="btn" id="meSkip">Tylko oglądam</button></div>
 </dialog>
 
+<dialog id="histDlg">
+  <h2>Historia</h2>
+  <div id="histGame"></div>
+  <h3>Twoje gry online</h3>
+  <div class="stack games" id="histGames"></div>
+  <p class="status" id="histStatus" role="status"></p>
+  <div class="dlg-foot"><button class="btn" id="histDone">Gotowe</button></div>
+</dialog>
+
 <script>
 const KEY='licznik-punktow-v1';
 const NET_KEY='licznik-punktow-online';
 const ME_KEY='licznik-punktow-ja-';
+const GAMES_KEY='licznik-punktow-gry';
 const API='/api/punkty/games';
 const POLL_MS=2000;
 const COLORS=[
@@ -180,7 +209,7 @@ const COLORS=[
 let state={title:'',players:[],open:null};
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.players))state=Object.assign({title:''},s);}catch(e){}
 let local=state;
-/* net: null w grze na tym telefonie; we wspólnej grze {code,rev,me,pending,ok,unlocked} */
+/* net: null w grze offline; w grze online {code,rev,me,pending,ok,unlocked} */
 let net=null;
 function save(){if(net)return;try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
@@ -204,7 +233,7 @@ function render(focusId){
   list.innerHTML='';
   renderNet();
   if(!state.players.length){
-    const e=el('div','empty');e.appendChild(el('p',null,net?'Nikt jeszcze nie dołączył do tej gry.':'Dodaj graczy albo wczytaj zapisaną grę.'));
+    const e=el('div','empty');e.appendChild(el('p',null,net?'Nikt jeszcze nie dołączył do tej gry online.':'Dodaj graczy albo wczytaj zapisaną grę.'));
     const b=el('button','btn primary',net?'Dodaj siebie':'Dodaj graczy');b.onclick=net?openMe:openDlg;e.appendChild(b);
     list.appendChild(e);return;
   }
@@ -289,12 +318,19 @@ $('newForm').onsubmit=e=>{
 };
 $('resetBtn').onclick=()=>{
   if(!state.players.length)return;
-  if(confirm(net?'Wyzerować punkty wszystkich graczy? Zmiana obejmie wszystkie telefony w tej grze.':'Wyzerować punkty wszystkich graczy?')){
-    state.players.forEach(p=>{p.entries=[];if(net)p.eids=[];});state.open=null;save();send('POST','/reset');render();
+  if(net){
+    if(!state.players.some(p=>p.entries.length)){flash('W tej rundzie nie ma jeszcze punktów.');return;}
+    if(!confirm('Zakończyć rundę? Wynik trafi do historii, a punkty wszystkich zaczną się od zera na każdym telefonie.'))return;
+    state.players.forEach(p=>{p.entries=[];p.eids=[];});state.open=net.me||null;
+    send('POST','/finish',{id:uid()});render(net.me);flash('Runda zapisana w historii.');
+    return;
+  }
+  if(confirm('Wyzerować punkty wszystkich graczy?')){
+    state.players.forEach(p=>p.entries=[]);state.open=null;save();render();
   }
 };
 
-/* ---------- Zmiany w grze: lokalnie zapis w telefonie, we wspólnej grze także na serwerze ---------- */
+/* ---------- Zmiany w grze: offline zapis w telefonie, online także na serwerze ---------- */
 function addEntry(p,v){
   p.entries.push(v);save();
   if(net){const id=uid();p.eids.push(id);send('POST','/players/'+p.id+'/entries',{id,value:v});}
@@ -332,7 +368,7 @@ function setTitle(t){
   clearTimeout(titleTimer);titleTimer=setTimeout(()=>send('PATCH','',{title:state.title}),500);
 }
 
-/* ---------- Wspólna gra: serwer, odświeżanie co kilka sekund ---------- */
+/* ---------- Gra online: serwer, odświeżanie co kilka sekund ---------- */
 async function api(method,path,data){
   const r=await fetch(API+path,{method,headers:data?{'content-type':'application/json'}:{},body:data?JSON.stringify(data):undefined,cache:'no-store'});
   let j=null;try{j=await r.json();}catch(e){}
@@ -367,7 +403,7 @@ async function poll(){
     if(net===n&&!n.pending&&!g.same){fromServer(g);refreshViews();}
   }catch(e){
     n.ok=false;
-    if(e.status===404&&net===n){leaveGame();flash('Ta wspólna gra już nie istnieje.');}
+    if(e.status===404&&net===n){leaveGame();flash('Ta gra online już nie istnieje.');}
   }finally{n.polling=false;if(net===n)renderNet();}
 }
 function refreshViews(){
@@ -381,11 +417,12 @@ setInterval(()=>{if(!document.hidden)poll();},POLL_MS);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 
 function renderNet(){
-  $('netbar').hidden=!net;
-  $('shareBtn').hidden=!!net;
-  if(!net)return;
-  $('netCode').textContent=net.code;
-  $('led').classList.toggle('off',!net.ok);
+  $('resetBtn').textContent=net?'Zakończ rundę':'Nowa gra';
+  const led=$('led'),mode=$('netMode');
+  led.classList.toggle('idle',!net);
+  led.classList.toggle('off',!!net&&!net.ok);
+  if(!net){mode.textContent='Gra offline';$('netInfo').textContent='dotknij, by grać online';return;}
+  mode.textContent='Gra online ';mode.appendChild(el('b',null,net.code));
   const me=state.players.find(p=>p.id===net.me);
   $('netInfo').textContent=!net.ok?'brak połączenia':(me?'grasz jako '+me.name:'tylko oglądasz');
 }
@@ -401,6 +438,7 @@ async function enterGame(code,g){
   state={title:'',players:[],open:null};
   fromServer(g);
   store.set(NET_KEY,code);
+  rememberGame(code);
   const u=new URL(location.href);u.searchParams.set('g',code);history.replaceState(null,'',u);
   if(!state.players.some(p=>p.id===net.me))net.me=null;
   if(net.me)state.open=net.me;
@@ -419,13 +457,13 @@ async function joinGame(code){
   if(code.length!==6){$('shareStatus').textContent='Kod gry ma 6 znaków.';return false;}
   try{const g=await api('GET','/'+code);await enterGame(code,g);return true;}
   catch(e){
-    if(e.status===404){flash('Nie ma gry o kodzie '+code+'.');if(store.get(NET_KEY)===code)store.set(NET_KEY,null);}
+    if(e.status===404){flash('Nie ma gry o kodzie '+code+'.');forgetGame(code);if(store.get(NET_KEY)===code)store.set(NET_KEY,null);}
     else flash(e.message);
     return false;
   }
 }
 
-/* Dialog „Wspólna gra” */
+/* Dialog „Gra online” */
 function shareUrl(){return location.origin+location.pathname+'?g='+net.code;}
 function openShare(){
   $('shareStatus').textContent='';
@@ -433,7 +471,6 @@ function openShare(){
   if(net){$('shareCode').textContent=net.code;drawQr();}
   $('shareDlg').showModal();
 }
-$('shareBtn').onclick=openShare;
 $('netbar').onclick=openShare;
 $('shareDone').onclick=()=>$('shareDlg').close();
 $('createGame').onclick=async()=>{
@@ -458,7 +495,7 @@ $('shareLink').onclick=async()=>{
 };
 $('whoBtn').onclick=()=>{$('shareDlg').close();openMe();};
 $('leaveGame').onclick=()=>{
-  if(!confirm('Wyjść ze wspólnej gry? Gra zostanie na serwerze i możesz do niej wrócić z tym samym kodem.'))return;
+  if(!confirm('Przejść do gry offline? Gra online zostanie na serwerze i możesz do niej wrócić z historii albo tym samym kodem.'))return;
   leaveGame();$('shareDlg').close();
 };
 let qrLib=null;
@@ -497,6 +534,91 @@ $('meForm').onsubmit=e=>{
   const p=addPlayer(n);setMe(p.id);
 };
 $('meSkip').onclick=()=>setMe(null);
+
+/* ---------- Historia: rundy, statystyki, lista gier z tego telefonu ---------- */
+function knownGames(){try{const a=JSON.parse(store.get(GAMES_KEY));return Array.isArray(a)?a:[];}catch(e){return [];}}
+function rememberGame(code){store.set(GAMES_KEY,JSON.stringify([code,...knownGames().filter(c=>c!==code)].slice(0,30)));}
+function forgetGame(code){store.set(GAMES_KEY,JSON.stringify(knownGames().filter(c=>c!==code)));}
+const when=t=>new Date(t).toLocaleString('pl-PL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+const day=t=>new Date(t).toLocaleDateString('pl-PL',{day:'numeric',month:'short',year:'numeric'});
+const winnersOf=r=>{const m=Math.max(...r.players.map(p=>p.total));return r.players.filter(p=>p.total===m);};
+
+function statsOf(rounds){
+  const by=new Map();
+  // Od najstarszej, żeby zostało najnowsze imię i kolor gracza.
+  [...rounds].reverse().forEach(r=>{
+    const win=new Set(winnersOf(r).map(p=>p.id));
+    r.players.forEach(p=>{
+      const s=by.get(p.id)||{name:p.name,color:p.color,rounds:0,wins:0,sum:0,best:-Infinity};
+      s.name=p.name;s.color=p.color;s.rounds++;s.sum+=p.total;s.best=Math.max(s.best,p.total);if(win.has(p.id))s.wins++;
+      by.set(p.id,s);
+    });
+  });
+  return [...by.values()].sort((a,b)=>b.wins-a.wins||b.sum/b.rounds-a.sum/a.rounds);
+}
+function renderStats(rounds){
+  const t=el('table','stats');
+  const h=t.createTHead().insertRow();['Gracz','Wygrane','Rundy','Średnio','Najlepszy'].forEach(x=>h.appendChild(el('th',null,x)));
+  const b=t.createTBody();
+  statsOf(rounds).forEach(s=>{
+    const r=b.insertRow();const c=r.insertCell();const d=el('span','dot');d.style.setProperty('--c',COLORS[s.color%COLORS.length].c);
+    c.append(d,s.name);
+    [s.wins,s.rounds,fmt(Math.round(s.sum/s.rounds)),fmt(s.best)].forEach(v=>{r.insertCell().textContent=v;});
+  });
+  return t;
+}
+function renderRound(r,i,count){
+  const box=el('div','round');
+  const head=el('div','round-head');head.appendChild(el('span',null,'Runda '+(count-i)+' · '+when(r.finished_at)));
+  const del=el('button','del','Usuń');
+  del.onclick=async()=>{
+    if(!confirm('Usunąć rundę '+(count-i)+' z historii?'))return;
+    try{await api('DELETE','/'+net.code+'/rounds/'+r.id);openHistory();}catch(e){$('histStatus').textContent=e.message;}
+  };
+  head.appendChild(del);box.appendChild(head);
+  const res=el('div','round-res'),win=new Set(winnersOf(r).map(p=>p.id));
+  [...r.players].sort((a,b)=>b.total-a.total).forEach(p=>res.appendChild(el('span',win.has(p.id)?'win':null,(win.has(p.id)?'🏆 ':'')+p.name+' '+fmt(p.total))));
+  box.appendChild(res);return box;
+}
+async function openHistory(){
+  const g=$('histGame'),list=$('histGames');
+  $('histStatus').textContent='';
+  if(!$('histDlg').open)$('histDlg').showModal();
+  g.innerHTML='';list.innerHTML='';
+  if(net){
+    g.appendChild(el('h3',null,state.title||'Ta gra'));
+    const wait=el('p','muted','Wczytuję…');g.appendChild(wait);
+    try{
+      const {rounds}=await api('GET','/'+net.code+'/rounds');
+      wait.remove();
+      if(!rounds.length)g.appendChild(el('p','muted','Nie ma jeszcze zakończonych rund. Po grze dotknij „Zakończ rundę”, a wynik trafi tutaj.'));
+      else{
+        g.appendChild(renderStats(rounds));
+        g.appendChild(el('h3',null,'Rundy'));
+        rounds.forEach((r,i)=>g.appendChild(renderRound(r,i,rounds.length)));
+      }
+    }catch(e){wait.textContent=e.message;}
+  }else{
+    g.appendChild(el('p','muted','Grasz offline. Historia rund i statystyki działają w grze online. Otwórz jedną z gier poniżej albo dotknij paska „Gra offline”, żeby utworzyć nową.'));
+  }
+  const codes=knownGames();
+  if(!codes.length){list.appendChild(el('p','muted','Ten telefon nie dołączył jeszcze do żadnej gry online.'));return;}
+  try{
+    const {games}=await api('GET','?ids='+codes.join(','));
+    const found=new Set(games.map(x=>x.id));
+    codes.filter(c=>!found.has(c)).forEach(forgetGame);
+    games.forEach(x=>{
+      const cur=net&&net.code===x.id;
+      const b=el('button','btn wide',(x.title||'Gra bez nazwy')+(cur?' (otwarta)':''));
+      b.appendChild(el('small',null,x.id+' · rund: '+x.rounds+' · graczy: '+x.players+' · ostatnio '+day(x.updated_at)));
+      b.disabled=cur;
+      b.onclick=async()=>{$('histStatus').textContent='Otwieram…';if(await joinGame(x.id))$('histDlg').close();};
+      list.appendChild(b);
+    });
+  }catch(e){list.appendChild(el('p','muted',e.message));}
+}
+$('histBtn').onclick=openHistory;
+$('histDone').onclick=()=>$('histDlg').close();
 
 /* ---------- Plik: zapis, wczytanie, eksport ---------- */
 const status=t=>{$('status').textContent=t;};
@@ -545,7 +667,7 @@ $('saveCsv').onclick=()=>{
 };
 
 $('loadJson').onclick=()=>{
-  if(net){status('We wspólnej grze nie można wczytać pliku. Wyjdź z niej albo wczytaj plik i utwórz nową wspólną grę.');return;}
+  if(net){status('W grze online nie można wczytać pliku. Przejdź do gry offline, wczytaj plik i utwórz z niego nową grę online.');return;}
   $('fileInput').value='';$('fileInput').click();
 };
 $('fileInput').onchange=async e=>{

@@ -1,10 +1,14 @@
-// API wspólnej gry dla licznika punktów (/punkty/).
+// API gry online dla licznika punktów (/punkty/).
 // Cloudflare Pages Function z bazą D1 podpiętą jako `DB`.
 //
 //   POST   /api/punkty/games                         utwórz grę {title, players:[{id,name,entries:[{id,value}]}]}
+//   GET    /api/punkty/games?ids=A,B                 krótki opis gier o podanych kodach (lista „Twoje gry”)
 //   GET    /api/punkty/games/:g?rev=N                stan gry (albo {rev} bez zmian, jeśli N jest aktualne)
 //   PATCH  /api/punkty/games/:g                      {title}
 //   POST   /api/punkty/games/:g/reset                wyzeruj punkty wszystkich
+//   POST   /api/punkty/games/:g/finish               {id} zapisz rundę w historii i wyzeruj punkty
+//   GET    /api/punkty/games/:g/rounds               historia rund, od najnowszej
+//   DELETE /api/punkty/games/:g/rounds/:r            usuń rundę z historii
 //   PUT    /api/punkty/games/:g/order                {ids:[...]} kolejność graczy
 //   POST   /api/punkty/games/:g/players              {id, name}
 //   PATCH  /api/punkty/games/:g/players/:p           {name}
@@ -13,7 +17,7 @@
 //   DELETE /api/punkty/games/:g/entries/:e
 
 const COLORS = 8, MAX_PLAYERS = 16, MAX_ENTRIES = 3000, MAX_VALUE = 1e6;
-const KEEP_DAYS = 60;
+const MAX_ROUNDS = 1000, MAX_LIST = 30;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ID_RE = /^[a-z0-9]{4,24}$/;
 
@@ -21,6 +25,7 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS pk_games (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', rev INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS pk_players (id TEXT NOT NULL, game_id TEXT NOT NULL, name TEXT NOT NULL, color INTEGER NOT NULL, pos INTEGER NOT NULL, PRIMARY KEY (game_id, id))`,
   `CREATE TABLE IF NOT EXISTS pk_entries (id TEXT NOT NULL, game_id TEXT NOT NULL, player_id TEXT NOT NULL, value INTEGER NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (game_id, id))`,
+  `CREATE TABLE IF NOT EXISTS pk_rounds (id TEXT NOT NULL, game_id TEXT NOT NULL, finished_at INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (game_id, id))`,
   `CREATE INDEX IF NOT EXISTS pk_entries_player ON pk_entries (game_id, player_id, created_at)`,
 ];
 let schemaReady = false;
@@ -61,16 +66,17 @@ async function requireGame(db, g) {
 const bump = (db, g) => db.prepare('UPDATE pk_games SET rev = rev + 1, updated_at = ? WHERE id = ?').bind(Date.now(), g);
 
 async function readGame(db, g) {
-  const [game, players, entries] = await db.batch([
+  const [game, players, entries, rounds] = await db.batch([
     db.prepare('SELECT id, title, rev FROM pk_games WHERE id = ?').bind(g),
     db.prepare('SELECT id, name, color FROM pk_players WHERE game_id = ? ORDER BY pos, rowid').bind(g),
     db.prepare('SELECT id, player_id, value FROM pk_entries WHERE game_id = ? ORDER BY created_at, rowid').bind(g),
+    db.prepare('SELECT COUNT(*) AS n FROM pk_rounds WHERE game_id = ?').bind(g),
   ]);
   const row = game.results[0];
   if (!row) throw new HttpError(404, 'Nie ma takiej gry.');
   const byPlayer = new Map(players.results.map(p => [p.id, { id: p.id, name: p.name, color: p.color, entries: [] }]));
   for (const e of entries.results) byPlayer.get(e.player_id)?.entries.push({ id: e.id, value: e.value });
-  return { id: row.id, title: row.title, rev: row.rev, players: [...byPlayer.values()] };
+  return { id: row.id, title: row.title, rev: row.rev, rounds: rounds.results[0].n, players: [...byPlayer.values()] };
 }
 
 async function freeColor(db, g) {
@@ -105,15 +111,46 @@ async function createGame(db, data) {
     }
   });
   await db.batch(stmts);
-
-  // Sprzątanie starych gier przy okazji tworzenia nowej.
-  const cutoff = now - KEEP_DAYS * 864e5;
-  await db.batch([
-    db.prepare('DELETE FROM pk_entries WHERE game_id IN (SELECT id FROM pk_games WHERE updated_at < ?)').bind(cutoff),
-    db.prepare('DELETE FROM pk_players WHERE game_id IN (SELECT id FROM pk_games WHERE updated_at < ?)').bind(cutoff),
-    db.prepare('DELETE FROM pk_games WHERE updated_at < ?').bind(cutoff),
-  ]);
   return readGame(db, code);
+}
+
+async function listGames(db, url) {
+  const ids = [...new Set(String(url.searchParams.get('ids') || '').toUpperCase().split(','))]
+    .filter(id => /^[A-Z0-9]{6}$/.test(id)).slice(0, MAX_LIST);
+  if (!ids.length) return { games: [] };
+  const { results } = await db.prepare(
+    `SELECT g.id, g.title, g.updated_at,
+       (SELECT COUNT(*) FROM pk_rounds r WHERE r.game_id = g.id) AS rounds,
+       (SELECT COUNT(*) FROM pk_players p WHERE p.game_id = g.id) AS players
+     FROM pk_games g WHERE g.id IN (${ids.map(() => '?').join(',')}) ORDER BY g.updated_at DESC`).bind(...ids).all();
+  return { games: results };
+}
+
+async function finishRound(db, g, data) {
+  const id = checkId(data.id);
+  const game = await readGame(db, g);
+  if (!game.players.some(p => p.entries.length)) throw new HttpError(400, 'W tej rundzie nie ma jeszcze punktów.');
+  const n = await db.prepare('SELECT COUNT(*) AS n FROM pk_rounds WHERE game_id = ?').bind(g).first();
+  if (n.n >= MAX_ROUNDS) throw new HttpError(400, 'Historia tej gry jest pełna.');
+  const snapshot = {
+    title: game.title,
+    players: game.players.map(p => ({
+      id: p.id, name: p.name, color: p.color,
+      total: p.entries.reduce((a, e) => a + e.value, 0),
+      entries: p.entries.map(e => e.value),
+    })),
+  };
+  return [
+    db.prepare('INSERT OR IGNORE INTO pk_rounds (id, game_id, finished_at, data) VALUES (?, ?, ?, ?)')
+      .bind(id, g, Date.now(), JSON.stringify(snapshot)),
+    db.prepare('DELETE FROM pk_entries WHERE game_id = ?').bind(g),
+  ];
+}
+
+async function listRounds(db, g) {
+  const { results } = await db.prepare('SELECT id, finished_at, data FROM pk_rounds WHERE game_id = ? ORDER BY finished_at DESC')
+    .bind(g).all();
+  return { rounds: results.map(r => ({ id: r.id, finished_at: r.finished_at, ...JSON.parse(r.data) })) };
 }
 
 async function route(request, db, parts) {
@@ -121,6 +158,7 @@ async function route(request, db, parts) {
   if (parts[0] !== 'games') throw new HttpError(404, 'Nie ma takiego adresu.');
   if (parts.length === 1) {
     if (m === 'POST') return json(await createGame(db, await body(request)), 201);
+    if (m === 'GET') return json(await listGames(db, new URL(request.url)));
     throw new HttpError(405, 'Niedozwolone.');
   }
 
@@ -138,6 +176,7 @@ async function route(request, db, parts) {
   }
 
   await requireGame(db, g);
+  if (rest[0] === 'rounds' && rest.length === 1 && m === 'GET') return json(await listRounds(db, g));
   let stmts;
 
   if (rest.length === 0 && m === 'PATCH') {
@@ -145,6 +184,10 @@ async function route(request, db, parts) {
     stmts = [db.prepare('UPDATE pk_games SET title = ? WHERE id = ?').bind(cleanName(data.title, 40), g)];
   } else if (rest[0] === 'reset' && rest.length === 1 && m === 'POST') {
     stmts = [db.prepare('DELETE FROM pk_entries WHERE game_id = ?').bind(g)];
+  } else if (rest[0] === 'finish' && rest.length === 1 && m === 'POST') {
+    stmts = await finishRound(db, g, await body(request));
+  } else if (rest[0] === 'rounds' && rest.length === 2 && m === 'DELETE') {
+    stmts = [db.prepare('DELETE FROM pk_rounds WHERE game_id = ? AND id = ?').bind(g, checkId(rest[1]))];
   } else if (rest[0] === 'order' && rest.length === 1 && m === 'PUT') {
     const data = await body(request);
     const ids = Array.isArray(data.ids) ? data.ids.slice(0, MAX_PLAYERS).map(checkId) : [];

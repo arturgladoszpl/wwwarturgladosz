@@ -10,7 +10,7 @@
 //   POST /api/plytki/games/:g/swap      {idx:[...]}
 //   POST /api/plytki/games/:g/pass
 
-import { checkMove, newBag, shuffle, key, HAND, BONUS } from '../../../public/punkty/plytki/rules.js';
+import { deal, play, swap, pass, RuleError } from '../../../public/punkty/plytki/engine.js';
 
 const MAX_PLAYERS = 4;
 const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -63,11 +63,6 @@ function player(game, token) {
   if (!p) throw new HttpError(403, 'Nie grasz w tej grze.');
   return p;
 }
-function onTurn(game, p) {
-  if (game.status !== 'play') throw new HttpError(400, game.status === 'end' ? 'Gra jest zakończona.' : 'Gra jeszcze się nie zaczęła.');
-  if (game.players[game.turn].id !== p.id) throw new HttpError(400, 'Teraz nie jest Twój ruch.');
-}
-const nextTurn = game => { game.turn = (game.turn + 1) % game.players.length; };
 
 // Po zakończeniu gry wynik trafia do historii gry online licznika, jeśli gra była z nią połączona.
 async function saveToCounter(db, game) {
@@ -142,59 +137,13 @@ async function route(request, db, parts) {
   } else if (action === 'start') {
     player(game, token);
     if (game.status !== 'lobby') throw new HttpError(400, 'Gra już się zaczęła.');
-    game.bag = newBag(random);
-    shuffle(game.players, random);
-    for (const p of game.players) p.hand = game.bag.splice(0, HAND);
-    game.status = 'play';
-    game.turn = 0;
+    deal(game, random);
   } else if (action === 'play') {
-    const p = player(game, token);
-    onTurn(game, p);
-    const moves = Array.isArray(data.moves) ? data.moves : [];
-    const used = new Set();
-    for (const mv of moves) {
-      if (!Number.isInteger(mv.i) || mv.i < 0 || mv.i >= p.hand.length || used.has(mv.i)) throw new HttpError(400, 'Zła płytka.');
-      if (!Number.isInteger(mv.x) || !Number.isInteger(mv.y) || Math.abs(mv.x) > 200 || Math.abs(mv.y) > 200) throw new HttpError(400, 'Złe pole.');
-      used.add(mv.i);
-    }
-    const board = new Map(game.board.map(([x, y, t]) => [key(x, y), t]));
-    const placed = moves.map(mv => ({ x: mv.x, y: mv.y, t: p.hand[mv.i] }));
-    const res = checkMove(board, placed);
-    if (!res.ok) throw new HttpError(400, res.error);
-    for (const c of placed) game.board.push([c.x, c.y, c.t]);
-    p.hand = p.hand.filter((_, i) => !used.has(i));
-    p.hand.push(...game.bag.splice(0, HAND - p.hand.length));
-    let score = res.score;
-    if (!p.hand.length && !game.bag.length) { score += BONUS; game.status = 'end'; }
-    p.score += score;
-    p.moves.push(score);
-    game.passes = 0;
-    game.last = { player: p.id, cells: placed.map(c => [c.x, c.y]), score, finished: game.status === 'end' };
-    if (game.status !== 'end') nextTurn(game);
+    play(game, player(game, token), data.moves);
   } else if (action === 'swap') {
-    const p = player(game, token);
-    onTurn(game, p);
-    const idx = [...new Set(Array.isArray(data.idx) ? data.idx : [])].filter(i => Number.isInteger(i) && i >= 0 && i < p.hand.length);
-    if (!idx.length) throw new HttpError(400, 'Zaznacz płytki do wymiany.');
-    if (game.bag.length < idx.length) throw new HttpError(400, 'W worku jest za mało płytek.');
-    const out = idx.map(i => p.hand[i]);
-    p.hand = p.hand.filter((_, i) => !idx.includes(i)).concat(game.bag.splice(0, idx.length));
-    game.bag.push(...out);
-    shuffle(game.bag, random);
-    p.moves.push(0);
-    game.passes = 0;
-    game.last = { player: p.id, cells: [], score: 0, swapped: out.length };
-    nextTurn(game);
+    swap(game, player(game, token), data.idx, random);
   } else if (action === 'pass') {
-    const p = player(game, token);
-    onTurn(game, p);
-    if (game.bag.length) throw new HttpError(400, 'Dopóki worek nie jest pusty, możesz wymienić płytki zamiast pasować.');
-    p.moves.push(0);
-    game.passes = (game.passes || 0) + 1;
-    game.last = { player: p.id, cells: [], score: 0, passed: true };
-    // Gdy nikt nie może się ruszyć, gra się kończy.
-    if (game.passes >= game.players.length) game.status = 'end';
-    else nextTurn(game);
+    pass(game, player(game, token));
   } else {
     throw new HttpError(404, 'Nie ma takiego adresu.');
   }
@@ -212,6 +161,7 @@ export async function onRequest({ request, env, params }) {
     return await route(request, db, [].concat(params.path || []));
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status);
+    if (e instanceof RuleError) return json({ error: e.message }, 400);
     console.error(e);
     return json({ error: 'Błąd serwera.' }, 500);
   }

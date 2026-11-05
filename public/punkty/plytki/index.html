@@ -54,6 +54,14 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .qr{display:flex;justify-content:center;margin:0 0 12px}
 .qr:empty{display:none}
 .qr svg{width:180px;height:180px;background:#fff;border-radius:12px;padding:8px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:var(--surface);color:var(--ink);font-weight:700;padding:8px 18px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--surface)}
+.lvl{display:flex;align-items:center;gap:10px;font-weight:600}
+.lvl span{flex:1;white-space:nowrap}
+.lvl .seg button{padding:7px 9px;font-size:.85rem;font-weight:600}
+.score .lv{font-size:.72rem;color:var(--muted)}
 .rules{font-size:.92rem;line-height:1.45;color:var(--muted);margin:0;padding-left:18px}
 
 /* Ekran gry */
@@ -63,7 +71,9 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .bar .back{font-size:.9rem}
 .bar .title{flex:1;min-width:0;font-weight:800;font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 10px;font-size:.85rem;font-weight:600;cursor:pointer;white-space:nowrap}
-.scores{display:flex;gap:6px;overflow-x:auto;padding:0 12px 8px;scrollbar-width:none}
+.chip.wake[data-state="off"],.chip.wake[data-state="none"]{color:var(--muted)}
+.chip.wake[data-state="waiting"],.chip.wake[data-state="blocked"]{border-color:#E8B21E;background:color-mix(in srgb,#E8B21E 18%,var(--surface))}
+.scores{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}
 .scores::-webkit-scrollbar{display:none}
 .score{flex:none;display:flex;align-items:baseline;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:6px 10px;font-size:.9rem}
 .score b{font-size:1.15rem;font-variant-numeric:tabular-nums}
@@ -113,9 +123,20 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 
 <!-- Bez kodu gry: utwórz albo dołącz -->
 <div class="page" id="home" hidden>
-  <div class="top"><h1>Płytki online</h1><a class="back" href="/punkty/">← Licznik</a></div>
+  <div class="top"><h1>Płytki</h1><a class="back" href="/punkty/">← Licznik</a></div>
   <div class="card">
-    <h2>Nowa gra</h2>
+    <h2>Gra z komputerem</h2>
+    <p class="muted" style="margin:0 0 10px;font-size:.92rem">Bez internetu, na tym telefonie.</p>
+    <input class="text" id="soloName" placeholder="Twoje imię" maxlength="24" autocomplete="off" style="margin-bottom:10px">
+    <div class="muted" style="font-size:.9rem;margin-bottom:6px">Liczba komputerów</div>
+    <div class="seg" id="soloCount" role="radiogroup" aria-label="Liczba komputerów">
+      <button type="button" data-n="1">1</button><button type="button" data-n="2">2</button><button type="button" data-n="3">3</button>
+    </div>
+    <div class="stack" id="soloLevels" style="margin:10px 0 12px"></div>
+    <button class="btn primary wide" id="soloStart">Zagraj<small id="soloResults">Komputer myśli chwilę, potem Twój ruch</small></button>
+  </div>
+  <div class="card">
+    <h2>Gra online</h2>
     <div class="stack"><button class="btn primary wide" id="createBtn">Utwórz grę<small>Dostaniesz kod i QR dla pozostałych graczy</small></button></div>
   </div>
   <div class="card">
@@ -167,10 +188,10 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 <!-- Gra -->
 <div id="game" hidden>
   <div class="bar">
-    <a class="back" href="/punkty/">← Licznik</a>
+    <a class="back" href="/punkty/" aria-label="Wróć do licznika" title="Wróć do licznika" style="font-size:1.3rem;padding:0 4px">←</a>
     <span class="title" id="gameTitle">Płytki</span>
-    <button class="chip" id="bagChip" title="Płytki w worku">Worek</button>
-    <button class="chip" id="codeChip"></button>
+    <button class="chip wake" id="wakeBtn" hidden>☀ Ekran</button>
+    <button class="chip" id="codeChip" title="Kod gry i QR"></button>
   </div>
   <div class="scores" id="scores"></div>
   <div class="info" id="info"></div>
@@ -200,8 +221,12 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <p class="status" id="shareStatus" role="status"></p>
 </dialog>
 
+<script src="../nosleep.min.js"></script>
+<script src="../ekran.js"></script>
 <script type="module">
 import { COLORS, SHAPES, COLOR_NAMES, checkMove, key, colorOf, shapeOf } from './rules.js';
+import * as E from './engine.js';
+import { decide, LEVELS } from './bot.js';
 
 const API='/api/plytki/games';
 const POLL_MS=2000;
@@ -232,7 +257,12 @@ function tileEl(t){
 }
 
 /* ---------- Stan ---------- */
-const code=(new URLSearchParams(location.search).get('g')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const params=new URLSearchParams(location.search);
+const code=(params.get('g')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+// Gra z komputerem: cały stan w przeglądarce, zapisany w localStorage, bez serwera.
+const solo=!code&&params.has('solo');
+const SOLO_KEY='plytki-solo',SOLO_STATS='plytki-solo-wyniki';
+let sgame=null;
 const TOKEN_KEY='plytki-token-'+code;
 let token=store.get(TOKEN_KEY)||'';
 let g=null;                 // ostatni stan z serwera
@@ -264,8 +294,8 @@ function setGame(next){
 
 /* ---------- Widoki ---------- */
 function render(){
-  $('home').hidden=!!code;
-  if(!code)return;
+  $('home').hidden=!!code||solo;
+  if(!code&&!solo){renderHome();return;}
   if(!g)return;
   document.title=(myTurn()?'● Twój ruch · ':'')+(g.title||'Płytki online');
   const inLobby=g.status==='lobby';
@@ -299,12 +329,12 @@ function renderLobby(){
 
 function renderGame(){
   $('gameTitle').textContent=g.title||'Płytki';
-  $('bagChip').textContent='Worek: '+g.bag;
-  $('codeChip').textContent=g.id;
+  $('codeChip').textContent=g.id;$('codeChip').hidden=solo;
   const sc=$('scores');sc.innerHTML='';
   g.players.forEach((p,i)=>{
     const d=el('div','score'+(g.status==='play'&&i===g.turn?' turn':''));
     d.appendChild(el('span',null,p.name));
+    if(p.level)d.appendChild(el('span','lv',LEVELS[p.level].toLowerCase()));
     if(g.me&&p.id===g.me.id)d.appendChild(el('span','me','ty'));
     d.appendChild(el('b',null,String(p.score)));
     sc.appendChild(d);
@@ -324,13 +354,14 @@ function renderInfo(){
   const cur=g.players[g.turn];
   const last=g.last&&g.players.find(p=>p.id===g.last.player);
   const parts=[];
-  if(myTurn())parts.push('<b>Twój ruch.</b>');else parts.push('Ruch: <b>'+esc(cur.name)+'</b>.');
+  if(myTurn())parts.push('<b>Twój ruch.</b>');else parts.push('Ruch: <b>'+esc(cur.name)+'</b>'+(cur.level?' myśli…':'.'));
   if(last){
     if(g.last.swapped)parts.push(esc(last.name)+' wymienia płytki ('+g.last.swapped+').');
     else if(g.last.passed)parts.push(esc(last.name)+' pasuje.');
     else parts.push(esc(last.name)+' +'+g.last.score+'.');
   }
   if(!g.me)parts.push('Oglądasz grę.');
+  parts.push('<span style="float:right">Worek: <b>'+g.bag+'</b></span>');
   info.innerHTML=parts.join(' ');
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -457,14 +488,16 @@ function renderEnd(){
   box.appendChild(el('h2',null,'Koniec gry · wygrywa '+ranked.filter(p=>p.score===top).map(p=>p.name).join(' i ')));
   const ol=el('ol');ranked.forEach(p=>ol.appendChild(el('li',null,(p.score===top?'🏆 ':'')+p.name+' — '+p.score)));box.appendChild(ol);
   if(g.pk)box.appendChild(el('p','muted','Wynik zapisany w historii licznika (gra '+g.pk+').'));
+  if(solo){const st=soloStats();box.appendChild(el('p','muted','Twoje wygrane z komputerem: '+st.wins+' z '+st.games+'.'));}
   const row=el('div','row');
-  const again=el('button','btn primary','Nowa partia');again.onclick=()=>createGame(g.title,g.pk);
-  const back=el('a','btn','Wróć do licznika');back.href='/punkty/'+(g.pk?'?g='+g.pk:'');back.style.textDecoration='none';
+  const again=el('button','btn primary','Nowa partia');again.onclick=()=>solo?startSolo(sgame.settings):createGame(g.title,g.pk);
+  const back=el('a','btn',solo?'Menu':'Wróć do licznika');back.href=solo?'./':'/punkty/'+(g.pk?'?g='+g.pk:'');back.style.textDecoration='none';
   row.append(again,back);box.appendChild(row);
 }
 
 /* ---------- Akcje ---------- */
 async function act(path,data){
+  if(solo){soloAct(path,data);return;}
   if(busy)return;busy=true;renderDock();
   try{setGame(await api('POST','/'+code+path,data));}
   catch(e){setMsg(e.message,true);if(e.status===409)await poll(true);}
@@ -510,6 +543,80 @@ $('joinCodeForm').onsubmit=e=>{
   location.href='?g='+c;
 };
 
+/* ---------- Gra z komputerem ---------- */
+function soloView(){
+  const gm=sgame.game,me=gm.players.find(p=>p.id==='me');
+  return {id:'',title:'Gra z komputerem',status:gm.status,rev:0,pk:null,turn:gm.turn,bag:gm.bag.length,board:gm.board,last:gm.last||null,
+    players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null})),
+    me:{id:'me',hand:me.hand}};
+}
+function saveSolo(){store.set(SOLO_KEY,JSON.stringify(sgame));}
+function soloStats(){try{return JSON.parse(store.get(SOLO_STATS))||{games:0,wins:0};}catch(e){return {games:0,wins:0};}}
+function finishSolo(){
+  if(sgame.counted||sgame.game.status!=='end')return;
+  sgame.counted=true;saveSolo();
+  const top=Math.max(...sgame.game.players.map(p=>p.score)),st=soloStats();
+  st.games++;if(sgame.game.players.find(p=>p.id==='me').score===top)st.wins++;
+  store.set(SOLO_STATS,JSON.stringify(st));
+}
+function startSolo(settings){
+  const players=[{id:'me',name:settings.name||'Ty'}];
+  settings.levels.forEach((lv,i)=>players.push({id:'bot'+(i+1),name:'Komputer '+(i+1),level:lv}));
+  sgame={settings,game:E.deal({status:'lobby',players})};
+  saveSolo();shown=null;g=null;
+  if(!solo){location.href='?solo=1';return;}
+  setGame(soloView());runBots();
+}
+function soloAct(path,data){
+  const gm=sgame.game,me=gm.players.find(p=>p.id==='me');
+  try{
+    if(path==='/play')E.play(gm,me,data.moves);
+    else if(path==='/swap')E.swap(gm,me,data.idx);
+    else if(path==='/pass')E.pass(gm,me);
+  }catch(e){setMsg(e.message,true);return;}
+  saveSolo();finishSolo();setGame(soloView());runBots();
+}
+let botsRunning=false;
+async function runBots(){
+  if(botsRunning)return;botsRunning=true;
+  try{
+    while(sgame.game.status==='play'&&E.current(sgame.game).level){
+      await new Promise(r=>setTimeout(r,650));
+      const gm=sgame.game,p=E.current(gm);
+      const d=decide(gm,p,p.level);
+      if(d.type==='play')E.play(gm,p,d.moves);else if(d.type==='swap')E.swap(gm,p,d.idx);else E.pass(gm,p);
+      saveSolo();finishSolo();setGame(soloView());
+    }
+  }finally{botsRunning=false;}
+}
+
+/* Ekran startowy: ustawienia gry z komputerem */
+let soloSet=(()=>{try{const v=JSON.parse(store.get('plytki-solo-ustawienia'));if(v&&Array.isArray(v.levels)&&v.levels.length)return v;}catch(e){}return {name:'',levels:['medium']};})();
+function renderHome(){
+  if(!$('soloName').value)$('soloName').value=soloSet.name||'';
+  [...$('soloCount').children].forEach(b=>{b.setAttribute('role','radio');b.setAttribute('aria-checked',+b.dataset.n===soloSet.levels.length);});
+  const box=$('soloLevels');box.innerHTML='';
+  soloSet.levels.forEach((lv,i)=>{
+    const row=el('div','lvl');row.appendChild(el('span',null,'Komputer '+(i+1)));
+    const seg=el('div','seg');seg.setAttribute('role','radiogroup');seg.setAttribute('aria-label','Poziom komputera '+(i+1));
+    Object.entries(LEVELS).forEach(([k,label])=>{const b=el('button',null,label);b.type='button';b.setAttribute('role','radio');b.setAttribute('aria-checked',k===lv);
+      b.onclick=()=>{soloSet.levels[i]=k;renderHome();};seg.appendChild(b);});
+    row.appendChild(seg);box.appendChild(row);
+  });
+  const st=soloStats();
+  $('soloResults').textContent=st.games?'Twoje wygrane z komputerem: '+st.wins+' z '+st.games:'Komputer myśli chwilę, potem Twój ruch';
+}
+$('soloCount').onclick=e=>{
+  const n=+e.target.dataset.n;if(!n)return;
+  while(soloSet.levels.length<n)soloSet.levels.push(soloSet.levels[soloSet.levels.length-1]||'medium');
+  soloSet.levels.length=n;renderHome();
+};
+$('soloStart').onclick=()=>{
+  soloSet.name=$('soloName').value.trim().slice(0,24);
+  store.set('plytki-solo-ustawienia',JSON.stringify(soloSet));
+  startSolo({name:soloSet.name,levels:soloSet.levels.slice()});
+};
+
 /* ---------- Udostępnianie ---------- */
 const shareUrl=()=>location.origin+location.pathname+'?g='+code;
 let qrLib=null;
@@ -532,7 +639,6 @@ async function share(statusEl){
 $('lobbyShare').onclick=()=>share($('lobbyStatus'));
 $('shareLink').onclick=()=>share($('shareStatus'));
 $('codeChip').onclick=()=>{$('shareCode').textContent=code;$('shareStatus').textContent='';drawQr($('shareQr'));$('shareDlg').showModal();};
-$('bagChip').onclick=()=>setMsg('W worku zostało '+g.bag+' płytek.');
 document.querySelectorAll('dialog').forEach(d=>{
   d.querySelector('.x').onclick=()=>d.close();
   d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();
@@ -554,18 +660,17 @@ setInterval(()=>{if(!document.hidden)poll();},POLL_MS);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 window.addEventListener('resize',()=>{if(g&&g.status!=='lobby')renderBoard();});
 
-/* Ekran nie gaśnie w trakcie gry (chyba że ktoś wyłączył to w liczniku). */
-let wake=null;
-async function keepAwake(){
-  if(wake||document.hidden||!('wakeLock' in navigator)||store.get('licznik-punktow-ekran')==='0')return;
-  try{wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null;});}catch(e){}
-}
-document.addEventListener('visibilitychange',keepAwake);
-document.addEventListener('pointerdown',keepAwake);
+if(window.Ekran)Ekran.attach($('wakeBtn'),'short');
 
-render();
+if(solo){
+  try{sgame=JSON.parse(store.get(SOLO_KEY));}catch(e){sgame=null;}
+  if(!sgame||!sgame.game||!sgame.game.players)location.replace('./');
+  else{
+    document.querySelector('.bar .back').href='./';document.querySelector('.bar .back').title='Menu gry';
+    setGame(soloView());runBots();
+  }
+}else render();
 if(code)poll(true);
-keepAwake();
 </script>
 </body>
 </html>

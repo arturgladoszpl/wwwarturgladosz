@@ -144,7 +144,7 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
   <div class="stack">
     <button class="btn wide" id="saveJson">Zapisz grę do pliku<small>Plik .json, który potem wczytasz z powrotem</small></button>
     <button class="btn wide" id="loadJson">Wczytaj grę z pliku<small>Zastąpi obecną grę</small></button>
-    <button class="btn wide" id="saveCsv">Eksportuj tabelę wyników<small>Plik .csv do Excela lub Arkuszy Google</small></button>
+    <button class="btn wide" id="saveXlsx">Eksportuj wyniki do Excela<small>Plik .xlsx: bieżąca gra z każdym wpisem, a w grze online także wszystkie rundy i statystyki</small></button>
   </div>
   <p class="status" id="status" role="status"></p>
   <input type="file" id="fileInput" accept=".json,application/json" hidden>
@@ -676,14 +676,64 @@ $('saveJson').onclick=()=>{
   offerFile(baseName()+'.json',JSON.stringify(data,null,2),'application/json');
 };
 
-$('saveCsv').onclick=()=>{
-  if(!state.players.length){status('Najpierw dodaj graczy.');return;}
-  const q=v=>{v=String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
-  const n=Math.max(0,...state.players.map(p=>p.entries.length));
+/* Eksport do Excela: arkusz z bieżącą grą, a w grze online także rundy, statystyki i każda runda osobno */
+function entryRows(players){
+  const n=Math.max(0,...players.map(p=>p.entries.length));
   const head=['Gracz'];for(let i=1;i<=n;i++)head.push('Wpis '+i);head.push('Suma');
-  const rows=[head.map(q).join(';')];
-  state.players.forEach(p=>{const r=[p.name];for(let i=0;i<n;i++)r.push(i<p.entries.length?p.entries[i]:'');r.push(total(p));rows.push(r.map(q).join(';'));});
-  offerFile(baseName()+'.csv','﻿'+rows.join('\r\n'),'text/csv');
+  return [head,...players.map(p=>{const r=[p.name];for(let i=0;i<n;i++)r.push(i<p.entries.length?p.entries[i]:null);r.push(p.entries.reduce((a,b)=>a+b,0));return r;})];
+}
+function roundRows(rounds){
+  const ids=[],names=new Map();
+  [...rounds].reverse().forEach(r=>r.players.forEach(p=>{if(!names.has(p.id))ids.push(p.id);names.set(p.id,p.name);}));
+  const rows=[['Runda','Data',...ids.map(id=>names.get(id)),'Zwycięzca']];
+  [...rounds].reverse().forEach((r,i)=>{
+    const by=new Map(r.players.map(p=>[p.id,p.total]));
+    rows.push([i+1,new Date(r.finished_at),...ids.map(id=>by.has(id)?by.get(id):null),winnersOf(r).map(p=>p.name).join(', ')]);
+  });
+  rows.push(['Suma',null,...ids.map(id=>rounds.reduce((a,r)=>a+(r.players.find(p=>p.id===id)?.total||0),0)),null]);
+  return rows;
+}
+let xlsxLib=null;
+function loadXlsx(){
+  if(!xlsxLib)xlsxLib=new Promise((ok,no)=>{const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>ok(window.XLSX);s.onerror=()=>{xlsxLib=null;s.remove();no(new Error('offline'));};document.head.appendChild(s);});
+  return xlsxLib;
+}
+function saveCsv(){
+  const q=v=>{v=v==null?'':String(v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  offerFile(baseName()+'.csv','﻿'+entryRows(state.players).map(r=>r.map(q).join(';')).join('\r\n'),'text/csv');
+}
+$('saveXlsx').onclick=async()=>{
+  if(!state.players.length){status('Najpierw dodaj graczy.');return;}
+  status('Przygotowuję plik…');
+  let XLSX;
+  try{XLSX=await loadXlsx();}
+  catch(e){saveCsv();status('Brak internetu, więc zapisałem bieżącą grę jako plik .csv (otworzysz go w Excelu).');return;}
+  const wb=XLSX.utils.book_new(),used=new Set();
+  const add=(rows,name,widths)=>{
+    let n=name.replace(/[\[\]:*?\/\\]/g,'').slice(0,31)||'Arkusz',k=2;
+    while(used.has(n.toLowerCase()))n=name.slice(0,28)+' '+k++;
+    used.add(n.toLowerCase());
+    const ws=XLSX.utils.aoa_to_sheet(rows,{cellDates:true,dateNF:'yyyy-mm-dd hh:mm'});
+    ws['!cols']=widths||rows[0].map((_,i)=>({wch:i?9:16}));
+    XLSX.utils.book_append_sheet(wb,ws,n);
+  };
+  add(entryRows(state.players),net?'Bieżąca runda':'Wyniki');
+  if(net){
+    try{
+      const {rounds}=await api('GET','/'+net.code+'/rounds');
+      if(rounds.length){
+        const rr=roundRows(rounds);
+        add(rr,'Rundy',rr[0].map((_,i)=>({wch:i===0?8:i===1?17:i===rr[0].length-1?18:10})));
+        const st=statsOf(rounds);
+        add([['Gracz','Wygrane','Rundy','Średnio','Najlepszy','Suma'],...st.map(s=>[s.name,s.wins,s.rounds,Math.round(s.sum/s.rounds*10)/10,s.best,s.sum])],'Statystyki');
+        [...rounds].reverse().forEach((r,i)=>add(entryRows(r.players),'Runda '+(i+1)));
+      }
+    }catch(e){status('Nie udało się pobrać historii rund ('+e.message+'). Zapisuję tylko bieżącą rundę.');}
+  }
+  const data=XLSX.write(wb,{bookType:'xlsx',type:'array',compression:true});
+  offerFile(baseName()+'.xlsx',data,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 };
 
 $('loadJson').onclick=()=>{

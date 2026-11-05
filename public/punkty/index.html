@@ -170,12 +170,25 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
     <div class="qr" id="qr"></div>
     <div class="stack">
       <button class="btn wide" id="shareLink">Wyślij link do gry</button>
+      <button class="btn wide" id="newFromOnline">Nowa gra<small>Online albo offline, ci sami gracze, punkty od zera</small></button>
       <button class="btn wide" id="whoBtn">Zmień, kim jestem</button>
       <button class="btn wide" id="leaveGame">Przejdź do gry offline<small>Wrócisz do gry zapisanej na tym telefonie</small></button>
     </div>
   </div>
   <p class="status" id="shareStatus" role="status"></p>
   <div class="dlg-foot"><button class="btn" id="shareDone">Gotowe</button></div>
+</dialog>
+
+<dialog id="newDlg">
+  <h2>Nowa gra</h2>
+  <p>Gracze zostają, punkty zaczynają się od zera. Wybierz, jak chcecie grać:</p>
+  <p id="newNote" hidden>Obecna gra online zostanie w historii. Punkty z niezakończonej rundy nie trafią do historii, więc jeśli chcesz je zachować, najpierw dotknij „Zakończ rundę”.</p>
+  <div class="stack">
+    <button class="btn wide" id="newOffline">Gra offline<small>Tylko na tym telefonie, działa bez internetu</small></button>
+    <button class="btn wide" id="newOnline">Gra online<small>Każdy na swoim telefonie, z historią rund i statystykami</small></button>
+  </div>
+  <p class="status" id="newStatus" role="status"></p>
+  <div class="dlg-foot"><button class="btn" id="newCancel">Anuluj</button></div>
 </dialog>
 
 <dialog id="meDlg">
@@ -328,9 +341,7 @@ $('resetBtn').onclick=()=>{
     send('POST','/finish',{id:uid()});render(net.me);flash('Runda zapisana w historii.');
     return;
   }
-  if(confirm('Wyzerować punkty wszystkich graczy?')){
-    state.players.forEach(p=>p.entries=[]);state.open=null;save();render();
-  }
+  openNew();
 };
 
 /* ---------- Zmiany w grze: offline zapis w telefonie, online także na serwerze ---------- */
@@ -472,7 +483,7 @@ function openShare(){
   $('shareStatus').textContent='';
   $('shareOff').hidden=!!net;$('shareOn').hidden=!net;
   if(net){$('shareCode').textContent=net.code;drawQr();}
-  $('shareDlg').showModal();
+  if(!$('shareDlg').open)$('shareDlg').showModal();
 }
 $('netbar').onclick=openShare;
 $('shareDone').onclick=()=>$('shareDlg').close();
@@ -495,6 +506,38 @@ $('shareLink').onclick=async()=>{
   if(navigator.share){try{await navigator.share({title:'Liczenie punktów',text:'Dołącz do gry, kod '+net.code,url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
   try{await navigator.clipboard.writeText(url);$('shareStatus').textContent='Skopiowano link: '+url;}
   catch(e){$('shareStatus').textContent=url;}
+};
+/* Dialog „Nowa gra”: ci sami gracze, punkty od zera, do wyboru offline albo online */
+const freshPlayers=()=>state.players.map(p=>({id:p.id,name:p.name,color:p.color,entries:[]}));
+function openNew(){
+  $('newStatus').textContent='';
+  $('newNote').hidden=!(net&&state.players.some(p=>p.entries.length));
+  $('newDlg').showModal();
+}
+$('newFromOnline').onclick=()=>{$('shareDlg').close();openNew();};
+$('newCancel').onclick=()=>$('newDlg').close();
+$('newOffline').onclick=()=>{
+  if(net){
+    if(local.players.some(p=>p.entries.length)&&!confirm('Na tym telefonie jest zapisana gra offline z punktami. Zastąpić ją nową grą?'))return;
+    local={title:state.title,players:freshPlayers(),open:null};
+    leaveGame();save();
+  }else{
+    state.players.forEach(p=>p.entries=[]);state.open=null;save();render();
+  }
+  $('newDlg').close();
+};
+$('newOnline').onclick=async()=>{
+  const b=$('newOnline');b.disabled=true;$('newStatus').textContent='Tworzę grę…';
+  try{
+    const me=net&&net.me;
+    const g=await api('POST','',{title:state.title||'',players:freshPlayers()});
+    if(me)store.set(ME_KEY+g.id,me);
+    $('newDlg').close();
+    await enterGame(g.id,g);
+    if($('meDlg').open)net.justCreated=true;
+    else{openShare();$('shareStatus').textContent='Nowa gra gotowa. Pokaż pozostałym kod albo QR.';}
+  }catch(e){$('newStatus').textContent=e.message;}
+  finally{b.disabled=false;}
 };
 $('whoBtn').onclick=()=>{$('shareDlg').close();openMe();};
 $('leaveGame').onclick=()=>{

@@ -83,7 +83,7 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .info b{color:var(--ink)}
 .boardwrap{position:relative;flex:1;min-height:0;background:var(--felt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
 .board{position:absolute;inset:0;overflow:auto;touch-action:pan-x pan-y;overscroll-behavior:contain}
-.inner{position:relative;margin:0 auto}
+.inner{position:relative;transform-origin:0 0;will-change:transform}
 .zoom{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px;z-index:2}
 .zoom button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.3rem;font-weight:700;cursor:pointer;line-height:1}
 .cell{position:absolute;width:var(--cell);height:var(--cell);padding:2px}
@@ -197,7 +197,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <div class="info" id="info"></div>
   <div class="boardwrap">
     <div class="board" id="board"><div class="inner" id="inner"></div></div>
-    <div class="zoom"><button id="zoomIn" aria-label="Powiększ">+</button><button id="zoomOut" aria-label="Pomniejsz">−</button></div>
+    <div class="zoom"><button id="zoomIn" aria-label="Powiększ" title="Powiększ (albo rozsuń dwa palce)">+</button><button id="zoomOut" aria-label="Pomniejsz" title="Pomniejsz (albo zsuń dwa palce)">−</button><button id="zoomFit" aria-label="Pokaż całą planszę" title="Pokaż całą planszę" style="font-size:1.05rem">⤢</button></div>
     <div class="end" id="endBox" hidden></div>
   </div>
   <div class="dock" id="dock">
@@ -230,7 +230,7 @@ import { decide, LEVELS } from './bot.js';
 
 const API='/api/plytki/games';
 const POLL_MS=2000;
-const ZOOMS=[30,38,48,58,70];
+const CELL_MIN=18,CELL_MAX=110;
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},
   set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v);}catch(e){}}};
@@ -270,7 +270,8 @@ let sel=-1;                 // wybrana płytka na ręce
 let pending=[];             // [{i,x,y}] położone, ale niezatwierdzone
 let swapMode=false,marked=new Set();
 let busy=false;
-let zoom=Math.min(ZOOMS.length-1,Math.max(0,Number(store.get('plytki-zoom'))||2));
+let cellSize=Math.min(CELL_MAX,Math.max(CELL_MIN,Number(store.get('plytki-cell'))||48));
+let anchor=null;            // punkt planszy, który ma zostać pod palcem po zmianie powiększenia
 let shown=null;             // granice planszy z poprzedniego rysowania
 let wasMyTurn=false;
 
@@ -367,7 +368,7 @@ function renderInfo(){
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderBoard(){
-  const cell=ZOOMS[zoom];
+  const cell=cellSize;
   document.documentElement.style.setProperty('--cell',cell+'px');
   const bm=boardMap();
   const tmp=new Map(bm);
@@ -385,8 +386,11 @@ function renderBoard(){
   [...tmp.keys()].map(k=>k.split(',').map(Number)).concat(slots).forEach(([x,y])=>{
     minX=Math.min(minX,x);maxX=Math.max(maxX,x);minY=Math.min(minY,y);maxY=Math.max(maxY,y);
   });
-  const pad=3;minX-=pad;minY-=pad;maxX+=pad;maxY+=pad;
   const inner=$('inner'),board=$('board');
+  // Margines wokół płytek: co najmniej 3 pola i tyle, żeby plansza wypełniała ekran przy każdym powiększeniu.
+  const padX=Math.max(3,Math.ceil((board.clientWidth/cell-(maxX-minX+1))/2)+1);
+  const padY=Math.max(3,Math.ceil((board.clientHeight/cell-(maxY-minY+1))/2)+1);
+  minX-=padX;maxX+=padX;minY-=padY;maxY+=padY;
   const first=!shown||shown.cell!==cell;
   const prev=shown;
   inner.style.width=(maxX-minX+1)*cell+'px';inner.style.height=(maxY-minY+1)*cell+'px';
@@ -408,7 +412,10 @@ function renderBoard(){
     s.onclick=()=>place(x,y);inner.appendChild(s);
   });
   // Plansza rośnie we wszystkie strony; utrzymujemy widok w tym samym miejscu.
-  if(prev&&prev.cell!==cell){
+  if(anchor){
+    board.scrollLeft=(anchor.ux-minX)*cell-anchor.sx;board.scrollTop=(anchor.uy-minY)*cell-anchor.sy;
+    anchor=null;
+  }else if(prev&&prev.cell!==cell){
     // Powiększenie: ten sam punkt planszy zostaje na środku ekranu.
     const mx=(board.scrollLeft+board.clientWidth/2)/prev.cell+prev.minX,my=(board.scrollTop+board.clientHeight/2)/prev.cell+prev.minY;
     board.scrollLeft=(mx-minX)*cell-board.clientWidth/2;board.scrollTop=(my-minY)*cell-board.clientHeight/2;
@@ -514,8 +521,69 @@ $('undoBtn').onclick=()=>{
 };
 $('swapBtn').onclick=()=>{swapMode=true;sel=-1;marked.clear();renderBoard();renderDock();};
 $('passBtn').onclick=()=>{if(confirm('Spasować? Gdy wszyscy spasują po kolei, gra się kończy.'))act('/pass');};
-$('zoomIn').onclick=()=>{if(zoom<ZOOMS.length-1){zoom++;store.set('plytki-zoom',zoom);renderBoard();}};
-$('zoomOut').onclick=()=>{if(zoom>0){zoom--;store.set('plytki-zoom',zoom);renderBoard();}};
+/* ---------- Powiększanie: przyciski, dwa palce, Ctrl + kółko myszy ---------- */
+// Zmienia rozmiar pola tak, żeby punkt (clientX, clientY) został w tym samym miejscu ekranu.
+function zoomTo(next,clientX,clientY,fromX,fromY){
+  if(!shown)return;
+  const board=$('board'),r=board.getBoundingClientRect();
+  next=Math.min(CELL_MAX,Math.max(CELL_MIN,next));
+  const sx=clientX-r.left,sy=clientY-r.top;
+  const fx=(fromX??clientX)-r.left,fy=(fromY??clientY)-r.top;
+  anchor={ux:(board.scrollLeft+fx)/shown.cell+shown.minX,uy:(board.scrollTop+fy)/shown.cell+shown.minY,sx,sy};
+  cellSize=Math.round(next*10)/10;store.set('plytki-cell',cellSize);
+  renderBoard();
+}
+function zoomCenter(f){const r=$('board').getBoundingClientRect();zoomTo(cellSize*f,r.left+r.width/2,r.top+r.height/2);}
+$('zoomIn').onclick=()=>zoomCenter(1.25);
+$('zoomOut').onclick=()=>zoomCenter(0.8);
+// Cała plansza na ekranie, na środku.
+$('zoomFit').onclick=()=>{
+  if(!g||!shown)return;
+  const cells=g.board.map(c=>[c[0],c[1]]).concat(pending.map(p=>[p.x,p.y]));
+  if(!cells.length)return;
+  const xs=cells.map(c=>c[0]),ys=cells.map(c=>c[1]),board=$('board');
+  const w=Math.max(...xs)-Math.min(...xs)+2,h=Math.max(...ys)-Math.min(...ys)+2;
+  cellSize=Math.min(CELL_MAX,Math.max(CELL_MIN,Math.floor(Math.min(board.clientWidth/w,board.clientHeight/h))));
+  store.set('plytki-cell',cellSize);
+  anchor={ux:(Math.min(...xs)+Math.max(...xs))/2+0.5,uy:(Math.min(...ys)+Math.max(...ys))/2+0.5,sx:board.clientWidth/2,sy:board.clientHeight/2};
+  renderBoard();
+};
+{
+  const board=$('board'),inner=$('inner');
+  let pinch=null;
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+  board.addEventListener('touchstart',e=>{
+    if(e.touches.length!==2)return;
+    const m=mid(e.touches),r=board.getBoundingClientRect();
+    pinch={d:dist(e.touches),m,now:m,f:1,ox:board.scrollLeft+m.x-r.left,oy:board.scrollTop+m.y-r.top};
+  },{passive:true});
+  // W trakcie gestu tylko skalujemy obraz (płynnie); planszę przerysowujemy po zdjęciu palców.
+  board.addEventListener('touchmove',e=>{
+    if(!pinch||e.touches.length!==2)return;
+    e.preventDefault();
+    pinch.now=mid(e.touches);
+    pinch.f=Math.min(CELL_MAX,Math.max(CELL_MIN,cellSize*dist(e.touches)/pinch.d))/cellSize;
+    inner.style.transformOrigin=pinch.ox+'px '+pinch.oy+'px';
+    inner.style.transform='translate('+(pinch.now.x-pinch.m.x)+'px,'+(pinch.now.y-pinch.m.y)+'px) scale('+pinch.f+')';
+  },{passive:false});
+  const endPinch=e=>{
+    if(!pinch||e.touches.length>=2)return;
+    const p=pinch;pinch=null;
+    inner.style.transform='';
+    zoomTo(cellSize*p.f,p.now.x,p.now.y,p.m.x,p.m.y);
+  };
+  board.addEventListener('touchend',endPinch);
+  board.addEventListener('touchcancel',endPinch);
+  // Safari: bez tego dwa palce powiększałyby całą stronę.
+  board.addEventListener('gesturestart',e=>e.preventDefault());
+  // Komputer: Ctrl + kółko myszy albo gest szczypania na touchpadzie.
+  board.addEventListener('wheel',e=>{
+    if(!e.ctrlKey)return;
+    e.preventDefault();
+    zoomTo(cellSize*Math.exp(-e.deltaY*0.0025),e.clientX,e.clientY);
+  },{passive:false});
+}
 
 async function join(name){
   name=String(name||'').trim();if(!name){$('lobbyStatus').textContent='Wpisz swoje imię.';return;}

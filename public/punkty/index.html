@@ -30,7 +30,10 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 main{max-width:560px;margin:0 auto;padding:16px 14px 48px}
 header{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
-h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:0;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title-row{display:flex;align-items:center;gap:10px;flex:1 1 100%;min-width:0}
+h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wake{font:inherit;font-size:.8rem;font-weight:600;flex:none;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:6px 10px;cursor:pointer;white-space:nowrap}
+.wake[aria-pressed="true"]{color:var(--ink);border-color:var(--ink)}
 .title-btn{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;vertical-align:top}
 .title-btn::after{content:"✎";font-size:.55em;font-weight:600;color:var(--muted);margin-left:.4em;vertical-align:.3em}
 .title-input{font:inherit;letter-spacing:inherit;width:100%;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
@@ -116,7 +119,10 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 <body>
 <main>
   <header>
-    <h1><button class="title-btn" id="title" title="Zmień nazwę gry">Punkty</button><input class="title-input" id="titleInput" maxlength="40" placeholder="Nazwa gry" autocomplete="off" aria-label="Nazwa gry" hidden></h1>
+    <div class="title-row">
+      <h1><button class="title-btn" id="title" title="Zmień nazwę gry">Punkty</button><input class="title-input" id="titleInput" maxlength="40" placeholder="Nazwa gry" autocomplete="off" aria-label="Nazwa gry" hidden></h1>
+      <button class="wake" id="wakeBtn" aria-pressed="true" title="Czy ekran ma pozostać włączony" hidden>☀ Ekran nie gaśnie</button>
+    </div>
     <div class="actions">
       <button class="btn primary" id="newBtn">Nowa gra</button>
       <button class="btn" id="playersBtn">Gracze</button>
@@ -813,6 +819,35 @@ $('fileInput').onchange=async e=>{
     local=state;save();render();$('gameName').value=state.title;status('Wczytano grę z pliku '+f.name+'.');
   }catch(err){status('To nie jest plik zapisu z tego licznika.');}
 };
+
+/* Ekran nie gaśnie, dopóki licznik jest na wierzchu. Przeglądarka zwalnia blokadę po schowaniu strony, więc odnawiamy ją po powrocie. */
+const WAKE_KEY='licznik-punktow-ekran';
+let wakeOn=store.get(WAKE_KEY)!=='0',wakeLock=null,wakeBusy=false;
+function renderWake(){
+  const b=$('wakeBtn');
+  b.setAttribute('aria-pressed',wakeOn);
+  b.textContent=wakeOn?'☀ Ekran nie gaśnie':'Ekran może gasnąć';
+}
+async function applyWake(){
+  if(wakeOn&&!wakeLock&&!wakeBusy&&!document.hidden){
+    wakeBusy=true;
+    try{
+      const l=await navigator.wakeLock.request('screen');
+      l.addEventListener('release',()=>{if(wakeLock===l)wakeLock=null;});
+      if(wakeOn)wakeLock=l;else l.release().catch(()=>{});
+    }catch(e){}
+    wakeBusy=false;
+  }else if(!wakeOn&&wakeLock){
+    const l=wakeLock;wakeLock=null;l.release().catch(()=>{});
+  }
+}
+if('wakeLock' in navigator){
+  $('wakeBtn').hidden=false;renderWake();applyWake();
+  $('wakeBtn').onclick=()=>{wakeOn=!wakeOn;store.set(WAKE_KEY,wakeOn?null:'0');renderWake();applyWake();};
+  document.addEventListener('visibilitychange',applyWake);
+  // Niektóre przeglądarki pozwalają na blokadę dopiero po pierwszym dotknięciu.
+  document.addEventListener('pointerdown',applyWake);
+}
 
 render();
 {

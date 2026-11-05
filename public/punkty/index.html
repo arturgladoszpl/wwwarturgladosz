@@ -31,6 +31,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:"Bricolage Grote
 main{max-width:560px;margin:0 auto;padding:16px 14px 48px}
 header{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:8px 0 18px}
 h1{font-size:1.9rem;font-weight:800;letter-spacing:-.02em;margin:0;flex:1 1 100%;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.title-btn{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;vertical-align:top}
+.title-btn::after{content:"✎";font-size:.55em;font-weight:600;color:var(--muted);margin-left:.4em;vertical-align:.3em}
+.title-input{font:inherit;letter-spacing:inherit;width:100%;padding:0 8px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 .actions{display:flex;flex-wrap:wrap;gap:6px}
 .btn{font:inherit;font-weight:600;font-size:.95rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:9px 13px;cursor:pointer}
 .btn.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
@@ -111,7 +114,7 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 <body>
 <main>
   <header>
-    <h1 id="title">Punkty</h1>
+    <h1><button class="title-btn" id="title" title="Zmień nazwę gry">Punkty</button><input class="title-input" id="titleInput" maxlength="40" placeholder="Nazwa gry" autocomplete="off" aria-label="Nazwa gry" hidden></h1>
     <div class="actions">
       <button class="btn" id="playersBtn">Gracze</button>
       <button class="btn" id="fileBtn">Plik</button>
@@ -226,7 +229,7 @@ let seq=0;const uid=()=>newId()+(seq++).toString(36);
 const canEdit=p=>!net||p.id===net.me||net.unlocked.has(p.id);
 
 function render(focusId){
-  $('title').textContent=state.title||'Punkty';
+  if(!editingTitle)$('title').textContent=state.title||'Punkty';
   const list=$('list');
   // Odświeżenie z serwera nie może zgubić tego, co ktoś właśnie wpisuje.
   const a=document.activeElement,keep=a&&a.tagName==='INPUT'&&list.contains(a)?{id:a.id,v:a.value}:null;
@@ -625,6 +628,23 @@ const status=t=>{$('status').textContent=t;};
 $('fileBtn').onclick=()=>{$('gameName').value=state.title||'';status('');$('fileDlg').showModal();};
 $('fileDone').onclick=()=>$('fileDlg').close();
 $('gameName').oninput=e=>{setTitle(e.target.value.trim());render();};
+
+/* Zmiana nazwy gry dotknięciem tytułu */
+let editingTitle=false;
+$('title').onclick=()=>{
+  editingTitle=true;
+  const i=$('titleInput');i.value=state.title||'';
+  $('title').hidden=true;i.hidden=false;i.focus();i.select();
+};
+function endTitle(keep){
+  if(!editingTitle)return;
+  editingTitle=false;
+  const i=$('titleInput');
+  if(keep)setTitle(i.value.trim().slice(0,40));
+  i.hidden=true;$('title').hidden=false;render();
+}
+$('titleInput').onkeydown=e=>{if(e.key==='Enter')endTitle(true);else if(e.key==='Escape')endTitle(false);};
+$('titleInput').onblur=()=>endTitle(true);
 
 function stamp(){const d=new Date(),z=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+'_'+z(d.getHours())+z(d.getMinutes());}

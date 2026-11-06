@@ -78,6 +78,8 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .score{flex:none;display:flex;align-items:baseline;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:6px 10px;font-size:.9rem}
 .score b{font-size:1.15rem;font-variant-numeric:tabular-nums}
 .score.turn{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent) inset}
+.score .left{font-size:.8rem;font-weight:800;padding:1px 7px;border-radius:999px;background:var(--soft);color:var(--ink);font-variant-numeric:tabular-nums}
+.score .left.few{background:var(--bad);color:#fff}
 .score .me{font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--accent)}
 .info{padding:0 12px 6px;font-size:.92rem;color:var(--muted);min-height:1.3em}
 .info b{color:var(--ink)}
@@ -494,6 +496,11 @@ function renderGame(){
     if(p.off)d.appendChild(el('span','lv','bez połączenia'));
     if(g.me&&p.id===g.me.id)d.appendChild(el('span','me','ty'));
     d.appendChild(el('b',null,String(p.score)));
+    // Pusty worek: ile płytek zostało każdemu (kto pierwszy wyłoży wszystkie, dostaje +6).
+    if(g.status==='play'&&!g.bag&&p.tiles!=null){
+      const t=el('span','left'+(p.tiles<=2?' few':''),'▣ '+p.tiles);
+      t.title=t.ariaLabel='Płytek w ręce: '+p.tiles;d.appendChild(t);
+    }
     sc.appendChild(d);
   });
   renderInfo();
@@ -523,7 +530,7 @@ function renderInfo(){
   if(wifiGuest&&!(guestLink&&guestLink.open))parts.push('<b>Brak połączenia z gospodarzem.</b>');
   const offs=g.status==='play'?g.players.filter(p=>p.off):[];
   if(wifiHost&&offs.length)parts.push('<b>Bez połączenia: '+offs.map(p=>esc(p.name)).join(', ')+'</b> – dotknij 📶.');
-  parts.push('<span style="float:right">Worek: <b>'+g.bag+'</b></span>');
+  parts.push(g.bag?'<span style="float:right">Worek: <b>'+g.bag+'</b></span>':'<span style="float:right"><b>Worek pusty</b> · ▣ płytki w ręce</span>');
   info.innerHTML=parts.join(' ');
 }
 /* ---------- Świetny ruch: pełna linia albo 12+ pkt ---------- */

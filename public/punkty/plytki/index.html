@@ -117,6 +117,18 @@ dialog::backdrop{background:rgba(10,15,20,.55)}
 dialog h2{margin:0 0 10px;font-size:1.25rem}
 .x{position:sticky;top:0;float:right;z-index:1;margin:-10px -10px 0 8px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--soft);color:var(--ink);font-size:1.1rem;line-height:1;cursor:pointer}
 @media (max-height:700px){.qr svg{width:140px;height:140px}.code{font-size:2rem}}
+.qr.qrbig svg{width:min(78vw,300px);height:min(78vw,300px);padding:0}
+.pairstep{margin:0 0 10px;font-weight:600;line-height:1.4}
+.pairstep:empty{display:none}
+.scan{position:relative;border-radius:14px;overflow:hidden;background:#000;margin:0 0 10px;aspect-ratio:4/3}
+.scan video{width:100%;height:100%;object-fit:cover;display:block}
+.scan::after{content:"";position:absolute;inset:14%;border:3px solid rgba(255,255,255,.85);border-radius:12px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
+.dot.off{background:var(--bad)}
+.handoff{background:var(--bg);padding:14px 12px max(16px,env(safe-area-inset-bottom));text-align:center}
+.handoff p{margin:0}
+.handoff h2{margin:2px 0 10px;font-size:1.5rem}
+.handoff .btn{min-width:220px;padding:12px 18px}
 </style>
 </head>
 <body>
@@ -125,15 +137,27 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 <div class="page" id="home" hidden>
   <div class="top"><h1>Płytki</h1><a class="back" href="/punkty/">← Licznik</a></div>
   <div class="card">
-    <h2>Gra z komputerem</h2>
-    <p class="muted" style="margin:0 0 10px;font-size:.92rem">Bez internetu, na tym telefonie.</p>
-    <input class="text" id="soloName" placeholder="Twoje imię" maxlength="24" autocomplete="off" style="margin-bottom:10px">
-    <div class="muted" style="font-size:.9rem;margin-bottom:6px">Liczba komputerów</div>
+    <h2>Na tym telefonie</h2>
+    <p class="muted" style="margin:0 0 10px;font-size:.92rem">Bez internetu. Z komputerem albo kilka osób – po każdym ruchu podajecie sobie telefon.</p>
+    <div class="muted" style="font-size:.9rem;margin-bottom:6px">Osoby</div>
+    <div class="stack" id="soloPeople"></div>
+    <button class="btn" type="button" id="soloAddPerson" style="margin:8px 0 12px">+ Dodaj osobę</button>
+    <div class="muted" style="font-size:.9rem;margin-bottom:6px">Komputery</div>
     <div class="seg" id="soloCount" role="radiogroup" aria-label="Liczba komputerów">
-      <button type="button" data-n="1">1</button><button type="button" data-n="2">2</button><button type="button" data-n="3">3</button>
+      <button type="button" data-n="0">0</button><button type="button" data-n="1">1</button><button type="button" data-n="2">2</button><button type="button" data-n="3">3</button>
     </div>
     <div class="stack" id="soloLevels" style="margin:10px 0 12px"></div>
     <button class="btn primary wide" id="soloStart">Zagraj<small id="soloResults">Komputer myśli chwilę, potem Twój ruch</small></button>
+    <p class="status" id="soloStatus" role="status"></p>
+  </div>
+  <div class="card">
+    <h2>Przez Wi‑Fi, bez internetu</h2>
+    <p class="muted" style="margin:0 0 10px;font-size:.92rem">Każdy na swoim telefonie, np. w samolocie. Telefony w jednej sieci Wi‑Fi (wystarczy hotspot z jednego telefonu), łączycie się kodami QR.</p>
+    <div class="stack">
+      <button class="btn primary wide" id="wifiHostBtn">Utwórz grę<small>Pokażesz kod pozostałym graczom</small></button>
+      <button class="btn wide" id="wifiJoinBtn">Dołącz do gry<small>Zeskanujesz kod z telefonu gospodarza</small></button>
+    </div>
+    <p class="status" id="offlineState" role="status"></p>
   </div>
   <div class="card">
     <h2>Gra online</h2>
@@ -185,6 +209,38 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <p class="status" id="lobbyStatus" role="status"></p>
 </div>
 
+<!-- Gra przez Wi‑Fi: przed startem -->
+<div class="page" id="wifi" hidden>
+  <div class="top"><h1 id="wifiTitle">Płytki przez Wi‑Fi</h1><a class="back" href="./">← Menu</a></div>
+  <div class="card">
+    <h2>Twoje imię</h2>
+    <input class="text" id="wifiName" placeholder="Twoje imię" maxlength="24" autocomplete="off">
+  </div>
+  <div class="card" id="wifiHostBox" hidden>
+    <h2>Gracze <span class="muted" id="wifiCount"></span></h2>
+    <ul class="plist" id="wifiPlayers"></ul>
+    <div class="stack">
+      <button class="btn wide" id="wifiAdd">Dodaj gracza<small>Gracz skanuje Twój kod, potem Ty skanujesz jego</small></button>
+      <button class="btn primary wide" id="wifiStart">Zacznij grę<small>Kolejność graczy zostanie wylosowana</small></button>
+    </div>
+  </div>
+  <div class="card" id="wifiJoinBox" hidden>
+    <h2 id="wifiJoinTitle">Dołącz do gry</h2>
+    <ul class="plist" id="wifiGuestPlayers" hidden></ul>
+    <button class="btn primary wide" id="wifiConnect">Połącz z gospodarzem<small>Zeskanujesz kod z jego telefonu</small></button>
+  </div>
+  <p class="status" id="wifiStatus" role="status"></p>
+  <div class="card">
+    <h2>Jak to działa</h2>
+    <ul class="rules">
+      <li>Przed wyjazdem otwórz tę stronę na każdym telefonie z internetem – zapisze się do gry offline.</li>
+      <li>Wszystkie telefony w jednej sieci Wi‑Fi. Internet nie jest potrzebny – wystarczy hotspot z jednego telefonu.</li>
+      <li>Gospodarz tworzy grę i dodaje graczy: gracz skanuje kod gospodarza, a gospodarz kod gracza.</li>
+      <li>Gospodarz prowadzi grę – jego telefon musi zostać włączony do końca partii.</li>
+    </ul>
+  </div>
+</div>
+
 <!-- Gra -->
 <div id="game" hidden>
   <div class="bar">
@@ -199,6 +255,11 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
     <div class="board" id="board"><div class="inner" id="inner"></div></div>
     <div class="zoom"><button id="zoomIn" aria-label="Powiększ" title="Powiększ (albo rozsuń dwa palce)">+</button><button id="zoomOut" aria-label="Pomniejsz" title="Pomniejsz (albo zsuń dwa palce)">−</button><button id="zoomFit" aria-label="Pokaż całą planszę" title="Pokaż całą planszę" style="font-size:1.05rem">⤢</button></div>
     <div class="end" id="endBox" hidden></div>
+  </div>
+  <div class="handoff" id="handoff" hidden>
+    <p class="muted">Podaj telefon</p>
+    <h2 id="handoffName"></h2>
+    <button class="btn primary" id="handoffBtn">Pokaż moje płytki</button>
   </div>
   <div class="dock" id="dock">
     <p class="msg" id="msg" role="status"></p>
@@ -221,12 +282,30 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <p class="status" id="shareStatus" role="status"></p>
 </dialog>
 
+<dialog id="pairDlg">
+  <button class="x" type="button" aria-label="Zamknij">✕</button>
+  <h2 id="pairTitle">Połączenie</h2>
+  <p class="pairstep" id="pairStep1"></p>
+  <div class="qr qrbig" id="pairQr"></div>
+  <p class="pairstep" id="pairStep2"></p>
+  <div class="scan" id="pairScan" hidden><video id="pairVideo" playsinline muted></video></div>
+  <p class="status" id="pairStatus" role="status"></p>
+</dialog>
+
+<dialog id="netDlg">
+  <button class="x" type="button" aria-label="Zamknij">✕</button>
+  <h2>Gracze przez Wi‑Fi</h2>
+  <ul class="plist" id="netPlayers"></ul>
+  <button class="btn primary wide" id="netReconnect">Połącz gracza ponownie<small>Gracz wybiera „Połącz ponownie” i skanuje Twój kod</small></button>
+</dialog>
+
 <script src="../nosleep.min.js"></script>
 <script src="../ekran.js"></script>
 <script type="module">
 import { COLORS, SHAPES, COLOR_NAMES, checkMove, key, colorOf, shapeOf } from './rules.js';
 import * as E from './engine.js';
 import { decide, LEVELS } from './bot.js';
+import * as W from './wifi.js';
 
 const API='/api/plytki/games';
 const POLL_MS=2000;
@@ -259,9 +338,14 @@ function tileEl(t){
 /* ---------- Stan ---------- */
 const params=new URLSearchParams(location.search);
 const code=(params.get('g')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
-// Gra z komputerem: cały stan w przeglądarce, zapisany w localStorage, bez serwera.
+// Gra na tym telefonie (z komputerem albo kilka osób na zmianę): cały stan w przeglądarce, bez serwera.
 const solo=!code&&params.has('solo');
-const SOLO_KEY='plytki-solo',SOLO_STATS='plytki-solo-wyniki';
+// Gra przez Wi‑Fi: 'host' prowadzi grę na swoim telefonie, 'join' dołącza do gospodarza.
+const wifi=!code&&!solo?(params.get('wifi')||''):'';
+const wifiHost=wifi==='host',wifiGuest=wifi==='join';
+const local=solo||wifiHost;  // ten telefon liczy grę (silnik z engine.js)
+const SOLO_KEY='plytki-solo',SOLO_STATS='plytki-solo-wyniki',WIFI_KEY='plytki-wifi';
+const LOCAL_KEY=wifiHost?WIFI_KEY:SOLO_KEY;
 let sgame=null;
 const TOKEN_KEY='plytki-token-'+code;
 let token=store.get(TOKEN_KEY)||'';
@@ -295,8 +379,11 @@ function setGame(next){
 
 /* ---------- Widoki ---------- */
 function render(){
-  $('home').hidden=!!code||solo;
-  if(!code&&!solo){renderHome();return;}
+  const home=!code&&!solo&&!wifi;
+  $('home').hidden=!home;
+  $('wifi').hidden=!(wifi&&!g);
+  if(home){renderHome();return;}
+  if(wifi&&!g){$('lobby').hidden=true;$('game').hidden=true;renderWifi();return;}
   if(!g)return;
   document.title=(myTurn()?'● Twój ruch · ':'')+(g.title||'Płytki online');
   const inLobby=g.status==='lobby';
@@ -330,12 +417,17 @@ function renderLobby(){
 
 function renderGame(){
   $('gameTitle').textContent=g.title||'Płytki';
-  $('codeChip').textContent=g.id;$('codeChip').hidden=solo;
+  // Wi‑Fi: gospodarz ma tu listę graczy i ponowne łączenie, gracz – przycisk „Połącz”, gdy połączenie padło.
+  if(wifiHost)$('codeChip').textContent='📶 Gracze';
+  else if(wifiGuest)$('codeChip').textContent=guestLink&&guestLink.open?'📶 Połączono':'📶 Połącz';
+  else $('codeChip').textContent=g.id;
+  $('codeChip').hidden=solo;
   const sc=$('scores');sc.innerHTML='';
   g.players.forEach((p,i)=>{
     const d=el('div','score'+(g.status==='play'&&i===g.turn?' turn':''));
     d.appendChild(el('span',null,p.name));
     if(p.level)d.appendChild(el('span','lv',LEVELS[p.level].toLowerCase()));
+    if(p.off)d.appendChild(el('span','lv','bez połączenia'));
     if(g.me&&p.id===g.me.id)d.appendChild(el('span','me','ty'));
     d.appendChild(el('b',null,String(p.score)));
     sc.appendChild(d);
@@ -343,6 +435,7 @@ function renderGame(){
   renderInfo();
   renderBoard();
   renderDock();
+  renderHandoff();
   renderEnd();
   const mt=myTurn();
   if(mt&&!wasMyTurn&&navigator.vibrate)try{navigator.vibrate(150);}catch(e){}
@@ -355,13 +448,15 @@ function renderInfo(){
   const cur=g.players[g.turn];
   const last=g.last&&g.players.find(p=>p.id===g.last.player);
   const parts=[];
-  if(myTurn())parts.push('<b>Twój ruch.</b>');else parts.push('Ruch: <b>'+esc(cur.name)+'</b>'+(cur.level?' myśli…':'.'));
+  if(myTurn())parts.push(g.seat?'<b>'+esc(g.seat)+', Twój ruch.</b>':'<b>Twój ruch.</b>');
+  else parts.push('Ruch: <b>'+esc(cur.name)+'</b>'+(cur.level?' myśli…':cur.off?' – bez połączenia.':'.'));
   if(last){
     if(g.last.swapped)parts.push(esc(last.name)+' wymienia płytki ('+g.last.swapped+').');
     else if(g.last.passed)parts.push(esc(last.name)+' pasuje.');
     else parts.push(esc(last.name)+' +'+g.last.score+'.');
   }
-  if(!g.me)parts.push('Oglądasz grę.');
+  if(!g.me&&!local)parts.push('Oglądasz grę.');
+  if(wifiGuest&&!(guestLink&&guestLink.open))parts.push('<b>Brak połączenia z gospodarzem.</b>');
   parts.push('<span style="float:right">Worek: <b>'+g.bag+'</b></span>');
   info.innerHTML=parts.join(' ');
 }
@@ -485,6 +580,19 @@ function renderDock(){
   else setMsg(sel>=0?'Dotknij wolnego pola na planszy.':'Wybierz płytkę i dotknij pola na planszy.');
 }
 
+// Kilka osób na jednym telefonie: między ruchami płytki są zakryte, aż następna osoba weźmie telefon.
+function renderHandoff(){
+  const box=$('handoff');
+  box.hidden=!g.handoff;
+  if(box.hidden)return;
+  $('handoffName').textContent=g.handoff;
+  $('handoffBtn').textContent='Jestem '+g.handoff+' – pokaż płytki';
+}
+$('handoffBtn').onclick=()=>{
+  if(!local||!sgame)return;
+  sgame.revealed=E.current(sgame.game).id;saveLocal();setGame(localView());
+};
+
 function renderEnd(){
   const box=$('endBox');
   box.hidden=g.status!=='end';
@@ -495,16 +603,20 @@ function renderEnd(){
   box.appendChild(el('h2',null,'Koniec gry · wygrywa '+ranked.filter(p=>p.score===top).map(p=>p.name).join(' i ')));
   const ol=el('ol');ranked.forEach(p=>ol.appendChild(el('li',null,(p.score===top?'🏆 ':'')+p.name+' — '+p.score)));box.appendChild(ol);
   if(g.pk)box.appendChild(el('p','muted','Wynik zapisany w historii licznika (gra '+g.pk+').'));
-  if(solo){const st=soloStats();box.appendChild(el('p','muted','Twoje wygrane z komputerem: '+st.wins+' z '+st.games+'.'));}
+  if(solo&&soloCounts()){const st=soloStats();box.appendChild(el('p','muted','Twoje wygrane z komputerem: '+st.wins+' z '+st.games+'.'));}
+  if(wifiGuest)box.appendChild(el('p','muted','Nową partię zaczyna gospodarz.'));
   const row=el('div','row');
-  const again=el('button','btn primary','Nowa partia');again.onclick=()=>solo?startSolo(sgame.settings):createGame(g.title,g.pk);
-  const back=el('a','btn',solo?'Menu':'Wróć do licznika');back.href=solo?'./':'/punkty/'+(g.pk?'?g='+g.pk:'');back.style.textDecoration='none';
-  row.append(again,back);box.appendChild(row);
+  const again=el('button','btn primary','Nowa partia');
+  again.onclick=()=>solo?startSolo(sgame.settings):wifiHost?newWifiRound():createGame(g.title,g.pk);
+  const back=el('a','btn',local||wifi?'Menu':'Wróć do licznika');back.href=local||wifi?'./':'/punkty/'+(g.pk?'?g='+g.pk:'');back.style.textDecoration='none';
+  if(!wifiGuest)row.append(again);
+  row.append(back);box.appendChild(row);
 }
 
 /* ---------- Akcje ---------- */
 async function act(path,data){
-  if(solo){soloAct(path,data);return;}
+  if(local){localAct(path,data,g.me&&g.me.id);return;}
+  if(wifiGuest){guestAct(path,data);return;}
   if(busy)return;busy=true;renderDock();
   try{setGame(await api('POST','/'+code+path,data));}
   catch(e){setMsg(e.message,true);if(e.status===409)await poll(true);}
@@ -611,38 +723,73 @@ $('joinCodeForm').onsubmit=e=>{
   location.href='?g='+c;
 };
 
-/* ---------- Gra z komputerem ---------- */
-function soloView(){
-  const gm=sgame.game,me=gm.players.find(p=>p.id==='me');
-  return {id:'',title:'Gra z komputerem',status:gm.status,rev:0,pk:null,turn:gm.turn,bag:gm.bag.length,board:gm.board,last:gm.last||null,
-    players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null})),
-    me:{id:'me',hand:me.hand}};
+/* ---------- Gra na tym telefonie (komputer, kilka osób) i gospodarz gry przez Wi‑Fi ---------- */
+// Gracze w sgame.game.players: osoba przy tym telefonie (bez level i remote), komputer (level), gracz przez Wi‑Fi (remote).
+const isLocalHuman=p=>!p.level&&!p.remote;
+const localHumans=()=>sgame.game.players.filter(isLocalHuman);
+// Czyje płytki pokazać na tym telefonie: jedyna osoba przy nim albo – przy kilku osobach – ta, która wzięła telefon.
+function viewerId(){
+  const hs=localHumans();
+  if(hs.length===1)return hs[0].id;
+  const gm=sgame.game,cur=E.current(gm);
+  return gm.status==='play'&&isLocalHuman(cur)&&sgame.revealed===cur.id?cur.id:null;
 }
-function saveSolo(){store.set(SOLO_KEY,JSON.stringify(sgame));}
+function needHandoff(){
+  const gm=sgame.game,cur=E.current(gm);
+  return localHumans().length>1&&gm.status==='play'&&isLocalHuman(cur)&&sgame.revealed!==cur.id?cur.name:null;
+}
+// Widok gry dla gracza forId (null = bez płytek na ręce) – taki sam jak z serwera w grze online.
+function localView(forId){
+  const gm=sgame.game;
+  if(forId===undefined)forId=viewerId();
+  const me=forId&&gm.players.find(p=>p.id===forId);
+  const many=localHumans().length>1&&!(forId&&forId.startsWith('r-'));
+  return {id:'',title:sgame.title||'Płytki',status:gm.status,rev:0,pk:null,turn:gm.turn,bag:gm.bag.length,board:gm.board,last:gm.last||null,
+    players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null,off:!!(p.remote&&!(links.get(p.id)||{}).open)})),
+    me:me?{id:me.id,hand:me.hand}:null,
+    seat:many&&me?me.name:null,
+    handoff:forId&&forId.startsWith('r-')?null:needHandoff()};
+}
+function saveLocal(){store.set(LOCAL_KEY,JSON.stringify(sgame));}
 function soloStats(){try{return JSON.parse(store.get(SOLO_STATS))||{games:0,wins:0};}catch(e){return {games:0,wins:0};}}
-function finishSolo(){
-  if(sgame.counted||sgame.game.status!=='end')return;
-  sgame.counted=true;saveSolo();
+// Statystyka „wygrane z komputerem” tylko dla gry jednej osoby z komputerem.
+const soloCounts=()=>solo&&sgame&&localHumans().length===1&&sgame.game.players.some(p=>p.level);
+function finishLocal(){
+  if(!soloCounts()||sgame.counted||sgame.game.status!=='end')return;
+  sgame.counted=true;saveLocal();
   const top=Math.max(...sgame.game.players.map(p=>p.score)),st=soloStats();
-  st.games++;if(sgame.game.players.find(p=>p.id==='me').score===top)st.wins++;
+  st.games++;if(localHumans()[0].score===top)st.wins++;
   store.set(SOLO_STATS,JSON.stringify(st));
 }
+// Po każdej zmianie: zapis, widok na tym telefonie i wysyłka do graczy przez Wi‑Fi.
+function changed(){saveLocal();finishLocal();setGame(localView());broadcast();}
+
 function startSolo(settings){
-  const players=[{id:'me',name:settings.name||'Ty'}];
-  settings.levels.forEach((lv,i)=>players.push({id:'bot'+(i+1),name:'Komputer '+(i+1),level:lv}));
-  sgame={settings,game:E.deal({status:'lobby',players})};
-  saveSolo();shown=null;g=null;
+  const names=settings.names||[settings.name||''];
+  const many=names.length>1;
+  const players=names.map((n,i)=>({id:i?'h'+(i+1):'me',name:n||(many?'Gracz '+(i+1):'Ty')}));
+  (settings.levels||[]).forEach((lv,i)=>players.push({id:'bot'+(i+1),name:'Komputer '+(i+1),level:lv}));
+  const title=!many?'Gra z komputerem':'Gra na jednym telefonie';
+  sgame={settings:{names,levels:(settings.levels||[]).slice()},title,game:E.deal({status:'lobby',players})};
+  saveLocal();shown=null;g=null;
   if(!solo){location.href='?solo=1';return;}
-  setGame(soloView());runBots();
+  setGame(localView());runBots();
 }
-function soloAct(path,data){
-  const gm=sgame.game,me=gm.players.find(p=>p.id==='me');
+// pid – kto wykonuje ruch (osoba przy tym telefonie albo gracz przez Wi‑Fi).
+function localAct(path,data,pid){
+  const gm=sgame.game,p=gm.players.find(x=>x.id===pid);
   try{
-    if(path==='/play')E.play(gm,me,data.moves);
-    else if(path==='/swap')E.swap(gm,me,data.idx);
-    else if(path==='/pass')E.pass(gm,me);
-  }catch(e){setMsg(e.message,true);return;}
-  saveSolo();finishSolo();setGame(soloView());runBots();
+    if(!p)throw new Error('Nie ma takiego gracza.');
+    if(path==='/play')E.play(gm,p,data.moves);
+    else if(path==='/swap')E.swap(gm,p,data.idx);
+    else if(path==='/pass')E.pass(gm,p);
+    else throw new Error('Nieznany ruch.');
+  }catch(e){
+    if(p&&p.remote){const l=links.get(p.id);if(l)l.send({t:'err',msg:e.message});}
+    else setMsg(e.message,true);
+    return;
+  }
+  changed();runBots();
 }
 let botsRunning=false;
 async function runBots(){
@@ -653,16 +800,40 @@ async function runBots(){
       const gm=sgame.game,p=E.current(gm);
       const d=decide(gm,p,p.level);
       if(d.type==='play')E.play(gm,p,d.moves);else if(d.type==='swap')E.swap(gm,p,d.idx);else E.pass(gm,p);
-      saveSolo();finishSolo();setGame(soloView());
+      changed();
     }
   }finally{botsRunning=false;}
 }
 
-/* Ekran startowy: ustawienia gry z komputerem */
-let soloSet=(()=>{try{const v=JSON.parse(store.get('plytki-solo-ustawienia'));if(v&&Array.isArray(v.levels)&&v.levels.length)return v;}catch(e){}return {name:'',levels:['medium']};})();
+/* Ekran startowy: osoby i komputery na tym telefonie */
+let soloSet=(()=>{
+  try{
+    const v=JSON.parse(store.get('plytki-solo-ustawienia'));
+    if(v&&Array.isArray(v.levels)){
+      const names=Array.isArray(v.names)&&v.names.length?v.names:[v.name||''];
+      return {names:names.slice(0,4),levels:v.levels.slice(0,4-Math.min(4,names.length))};
+    }
+  }catch(e){}
+  return {names:[''],levels:['medium']};
+})();
+const saveSoloSet=()=>store.set('plytki-solo-ustawienia',JSON.stringify(soloSet));
 function renderHome(){
-  if(!$('soloName').value)$('soloName').value=soloSet.name||'';
-  [...$('soloCount').children].forEach(b=>{b.setAttribute('role','radio');b.setAttribute('aria-checked',+b.dataset.n===soloSet.levels.length);});
+  const pp=$('soloPeople');
+  if(pp.children.length!==soloSet.names.length){
+    pp.innerHTML='';
+    soloSet.names.forEach((n,i)=>{
+      const row=el('div','row');
+      const inp=el('input','text');inp.placeholder=soloSet.names.length>1?'Imię osoby '+(i+1):'Twoje imię';inp.maxLength=24;inp.autocomplete='off';inp.value=n;
+      inp.oninput=()=>{soloSet.names[i]=inp.value;};
+      row.appendChild(inp);
+      if(soloSet.names.length>1){const x=el('button','btn','✕');x.type='button';x.setAttribute('aria-label','Usuń osobę '+(i+1));
+        x.onclick=()=>{soloSet.names.splice(i,1);pp.innerHTML='';renderHome();};row.appendChild(x);}
+      pp.appendChild(row);
+    });
+  }
+  const people=soloSet.names.length;
+  $('soloAddPerson').disabled=people>=4;
+  [...$('soloCount').children].forEach(b=>{b.setAttribute('role','radio');b.setAttribute('aria-checked',+b.dataset.n===soloSet.levels.length);b.disabled=+b.dataset.n+people>4;});
   const box=$('soloLevels');box.innerHTML='';
   soloSet.levels.forEach((lv,i)=>{
     const row=el('div','lvl');row.appendChild(el('span',null,'Komputer '+(i+1)));
@@ -672,25 +843,232 @@ function renderHome(){
     row.appendChild(seg);box.appendChild(row);
   });
   const st=soloStats();
-  $('soloResults').textContent=st.games?'Twoje wygrane z komputerem: '+st.wins+' z '+st.games:'Komputer myśli chwilę, potem Twój ruch';
+  $('soloResults').textContent=people>1?'Po każdym ruchu podajcie sobie telefon'
+    :st.games?'Twoje wygrane z komputerem: '+st.wins+' z '+st.games:'Komputer myśli chwilę, potem Twój ruch';
+  renderOffline();
 }
+$('soloAddPerson').onclick=()=>{
+  if(soloSet.names.length>=4)return;
+  soloSet.names.push('');
+  if(soloSet.names.length+soloSet.levels.length>4)soloSet.levels.length=4-soloSet.names.length;
+  $('soloPeople').innerHTML='';renderHome();
+  const ins=$('soloPeople').querySelectorAll('input');ins[ins.length-1].focus();
+};
 $('soloCount').onclick=e=>{
-  const n=+e.target.dataset.n;if(!n)return;
+  const b=e.target.closest('button');if(!b||b.disabled)return;
+  const n=+b.dataset.n;
   while(soloSet.levels.length<n)soloSet.levels.push(soloSet.levels[soloSet.levels.length-1]||'medium');
   soloSet.levels.length=n;renderHome();
 };
 $('soloStart').onclick=()=>{
-  soloSet.name=$('soloName').value.trim().slice(0,24);
-  store.set('plytki-solo-ustawienia',JSON.stringify(soloSet));
-  startSolo({name:soloSet.name,levels:soloSet.levels.slice()});
+  soloSet.names=soloSet.names.map(n=>n.trim().slice(0,24));
+  if(soloSet.names.length+soloSet.levels.length<2){$('soloStatus').textContent='Dodaj drugą osobę albo komputer.';return;}
+  saveSoloSet();
+  startSolo({names:soloSet.names.slice(),levels:soloSet.levels.slice()});
 };
+
+/* ---------- Gra przez Wi‑Fi ---------- */
+const DEVICE_KEY='plytki-urzadzenie';
+const deviceId=store.get(DEVICE_KEY)||(()=>{const v=Array.from(crypto.getRandomValues(new Uint8Array(8)),b=>b.toString(16).padStart(2,'0')).join('');store.set(DEVICE_KEY,v);return v;})();
+const links=new Map();      // gospodarz: id gracza → połączenie
+let lobbyGuests=[];         // gospodarz przed startem: [{id, name}]
+let guestLink=null;         // gracz: połączenie z gospodarzem
+let guestLobby=null;        // gracz przed startem: lista graczy od gospodarza
+let pairRun=0;              // numer bieżącego łączenia (zamknięcie okna przerywa skanowanie)
+const myName=()=>$('wifiName').value.trim().slice(0,24);
+const wifiStatus=t=>{$('wifiStatus').textContent=t||'';};
+
+function renderWifi(){
+  $('wifiTitle').textContent=wifiHost?'Gra przez Wi‑Fi':'Dołącz przez Wi‑Fi';
+  $('wifiHostBox').hidden=!wifiHost;$('wifiJoinBox').hidden=!wifiGuest;
+  if(wifiHost){
+    const names=[{name:myName()||'Ty (gospodarz)',me:true,on:true}].concat(lobbyGuests.map(p=>({name:p.name,on:(links.get(p.id)||{}).open})));
+    const l=$('wifiPlayers');l.innerHTML='';
+    names.forEach(p=>{const li=el('li');li.appendChild(el('span','dot'+(p.on?'':' off')));li.appendChild(el('span',null,p.name));
+      if(p.me)li.appendChild(el('small',null,'(ty)'));else if(!p.on)li.appendChild(el('small',null,'bez połączenia'));l.appendChild(li);});
+    $('wifiCount').textContent=names.length+'/4';
+    $('wifiAdd').disabled=names.length>=4;
+    $('wifiStart').disabled=names.length<2;
+  }else{
+    const on=guestLink&&guestLink.open;
+    $('wifiJoinTitle').textContent=on?'Połączono – czekaj na start':'Dołącz do gry';
+    $('wifiConnect').hidden=!!on;
+    const l=$('wifiGuestPlayers');l.hidden=!on||!guestLobby;l.innerHTML='';
+    if(on&&guestLobby)guestLobby.forEach(n=>l.appendChild(el('li',null,n)));
+  }
+}
+$('wifiName').value=soloSet.names[0]||'';
+$('wifiName').oninput=()=>{soloSet.names[0]=$('wifiName').value;saveSoloSet();if(wifiHost){renderWifi();sendLobby();}};
+$('wifiHostBtn').onclick=()=>{store.set(WIFI_KEY,null);location.href='?wifi=host';};
+$('wifiJoinBtn').onclick=()=>{location.href='?wifi=join';};
+
+// Okno łączenia: kod QR do pokazania i/lub aparat do skanowania.
+function pairUi({title,step1,step2,qr,scan,status}){
+  if(title!=null)$('pairTitle').textContent=title;
+  if(step1!=null)$('pairStep1').textContent=step1;
+  if(step2!=null)$('pairStep2').textContent=step2;
+  if(qr!==undefined){if(qr)W.drawQr($('pairQr'),qr);else $('pairQr').innerHTML='';}
+  if(scan!=null)$('pairScan').hidden=!scan;
+  if(status!=null)$('pairStatus').textContent=status;
+  if(!$('pairDlg').open)$('pairDlg').showModal();
+}
+$('pairDlg').addEventListener('close',()=>{pairRun++;W.stopCamera($('pairVideo'));$('pairQr').innerHTML='';});
+
+// Gospodarz: zaproszenie dla jednego gracza (nowego albo tego, który stracił połączenie).
+async function hostPair(){
+  const run=++pairRun,alive=()=>run===pairRun;
+  const video=$('pairVideo');
+  pairUi({title:'Dodaj gracza',step1:'',step2:'',qr:null,scan:false,status:'Włączam aparat…'});
+  let off=null;
+  try{
+    // Aparat włączamy przed przygotowaniem kodu – wtedy telefon podaje swój adres w sieci Wi‑Fi.
+    await W.startCamera(video);if(!alive())return;
+    pairUi({status:'Przygotowuję kod…'});
+    off=await W.hostOffer();if(!alive()){off.pc.close();return;}
+    pairUi({step1:'1. Gracz wybiera „Dołącz do gry” i skanuje ten kod:',qr:off.code,
+      step2:'2. Potem skieruj aparat na kod, który pokaże jego telefon:',scan:true,status:'Czekam na kod gracza…'});
+    const answer=await W.scanQr(video,t=>W.isCode('A',t),alive);
+    if(!answer){off.pc.close();return;}
+    W.stopCamera(video);
+    pairUi({scan:false,status:'Łączę…'});
+    const dc=await W.hostAccept(off.pc,off.dc,answer);
+    const pc=off.pc;off=null;
+    hostWire(pc,dc);
+    pairUi({status:'Połączono. Czekam na imię gracza…'});
+  }catch(e){
+    if(off)off.pc.close();
+    W.stopCamera(video);
+    if(alive())pairUi({scan:false,status:e.message||W.NET_HELP});
+  }
+}
+// Gospodarz: obsługa wiadomości od gracza. Gracz przedstawia się stałym id telefonu, więc po zerwaniu wraca na swoje miejsce.
+function hostWire(pc,dc){
+  let pid=null;
+  const link=W.wire(pc,dc,m=>{
+    if(m.t==='hello'){
+      const id='r-'+String(m.id||'').slice(0,32),name=String(m.name||'').trim().slice(0,24)||'Gracz';
+      const started=!!(sgame&&sgame.game);
+      if(started){
+        const p=sgame.game.players.find(x=>x.id===id);
+        if(!p){link.send({t:'err',msg:'Gra już trwa – nie możesz do niej dołączyć.'});setTimeout(()=>link.close(),500);return;}
+      }else{
+        const ex=lobbyGuests.find(x=>x.id===id);
+        if(ex)ex.name=name;
+        else if(lobbyGuests.length>=3){link.send({t:'err',msg:'W grze jest już 4 graczy.'});setTimeout(()=>link.close(),500);return;}
+        else lobbyGuests.push({id,name});
+      }
+      const old=links.get(id);if(old&&old!==link)old.close();
+      pid=id;links.set(id,link);
+      if($('pairDlg').open)$('pairDlg').close();
+      if(started){setGame(localView());broadcast();}else{renderWifi();sendLobby();}
+    }else if(m.t==='act'&&pid&&sgame&&sgame.game){
+      localAct(m.path,m.data||{},pid);
+    }
+  },()=>{
+    if(pid&&links.get(pid)===link)links.delete(pid);
+    if(sgame&&sgame.game){setGame(localView());broadcast();}else{renderWifi();sendLobby();}
+    if($('netDlg').open)renderNet();
+  });
+}
+function sendLobby(){
+  const names=[(myName()||'Gospodarz')+' (gospodarz)'].concat(lobbyGuests.map(p=>p.name));
+  for(const l of links.values())l.send({t:'lobby',players:names});
+}
+function broadcast(){
+  if(!wifiHost||!sgame||!sgame.game)return;
+  for(const [id,l] of links)l.send({t:'view',view:localView(id)});
+}
+$('wifiAdd').onclick=()=>hostPair();
+$('wifiStart').onclick=()=>{
+  const name=myName()||'Gospodarz';
+  const players=[{id:'me',name}].concat(lobbyGuests.map(p=>({id:p.id,name:p.name,remote:true})));
+  if(players.length<2){wifiStatus('Dodaj co najmniej jednego gracza.');return;}
+  sgame={title:'Gra przez Wi‑Fi',game:E.deal({status:'lobby',players})};
+  shown=null;changed();
+};
+function newWifiRound(){
+  const players=sgame.game.players.map(p=>({id:p.id,name:p.name,remote:p.remote,level:p.level}));
+  sgame={title:sgame.title,game:E.deal({status:'lobby',players})};
+  shown=null;changed();
+}
+// Gospodarz w trakcie gry: lista graczy i ponowne łączenie.
+function renderNet(){
+  const l=$('netPlayers');l.innerHTML='';
+  sgame.game.players.forEach(p=>{
+    const on=!p.remote||(links.get(p.id)||{}).open;
+    const li=el('li');li.appendChild(el('span','dot'+(on?'':' off')));li.appendChild(el('span',null,p.name));
+    li.appendChild(el('small',null,p.remote?(on?'połączony':'bez połączenia'):p.level?'komputer':'(ty)'));l.appendChild(li);
+  });
+}
+$('netReconnect').onclick=()=>{$('netDlg').close();hostPair();};
+
+// Gracz: skanuje kod gospodarza, pokazuje swój i czeka na połączenie.
+async function guestPair(){
+  const name=myName();
+  if(!name&&!g){wifiStatus('Wpisz swoje imię.');$('wifiName').focus();return;}
+  const run=++pairRun,alive=()=>run===pairRun;
+  const video=$('pairVideo');
+  pairUi({title:'Połącz z gospodarzem',step1:'1. Skieruj aparat na kod w telefonie gospodarza:',step2:'',qr:null,scan:true,status:'Włączam aparat…'});
+  let ans=null;
+  try{
+    await W.startCamera(video);if(!alive())return;
+    pairUi({status:'Szukam kodu…'});
+    const offer=await W.scanQr(video,t=>W.isCode('O',t),alive);
+    if(!offer)return;
+    pairUi({status:'Przygotowuję odpowiedź…'});
+    ans=await W.guestAnswer(offer);
+    W.stopCamera(video);
+    if(!alive()){ans.pc.close();return;}
+    pairUi({step1:'2. Pokaż ten kod gospodarzowi – niech go zeskanuje:',qr:ans.code,scan:false,status:'Czekam na połączenie…'});
+    const dc=await ans.ready;
+    if(!alive()){ans.pc.close();return;}
+    if(guestLink)guestLink.close();
+    guestLink=W.wire(ans.pc,dc,onHostMsg,()=>{if(g){setMsg('Połączenie z gospodarzem przerwane. Dotknij „📶 Połącz”.',true);render();}else{renderWifi();wifiStatus('Połączenie z gospodarzem przerwane.');}});
+    guestLink.send({t:'hello',id:deviceId,name:name||(g&&g.me&&(g.players.find(p=>p.id===g.me.id)||{}).name)||'Gracz'});
+    $('pairDlg').close();
+    wifiStatus('');render();
+  }catch(e){
+    if(ans)ans.pc.close();
+    W.stopCamera(video);
+    if(alive())pairUi({scan:false,qr:null,status:e.message||W.NET_HELP});
+  }
+}
+let guestBusy=null;
+function onHostMsg(m){
+  if(m.t==='lobby'){guestLobby=m.players;renderWifi();}
+  else if(m.t==='view'){
+    clearTimeout(guestBusy);busy=false;
+    const first=!g;setGame(m.view);if(first)render();
+  }else if(m.t==='err'){
+    clearTimeout(guestBusy);busy=false;
+    if(g){setMsg(m.msg,true);renderDock();}else wifiStatus(m.msg);
+  }
+}
+function guestAct(path,data){
+  if(busy)return;
+  if(!guestLink||!guestLink.open){setMsg('Brak połączenia z gospodarzem. Dotknij „📶 Połącz”.',true);return;}
+  busy=true;renderDock();
+  guestLink.send({t:'act',path,data:data||{}});
+  guestBusy=setTimeout(()=>{busy=false;setMsg('Gospodarz nie odpowiada.',true);renderDock();},10000);
+}
+$('wifiConnect').onclick=()=>guestPair();
+
+/* Gotowość do gry bez internetu (strona zapisana w telefonie) */
+async function renderOffline(){
+  const box=$('offlineState');
+  if(!('serviceWorker' in navigator)){box.textContent='';return;}
+  const reg=await navigator.serviceWorker.getRegistration('/punkty/');
+  let ok=false;
+  try{ok=!!(reg&&reg.active&&await caches.match('/punkty/plytki/wifi.js'));}catch(e){}
+  box.textContent=ok?'✓ Ten telefon ma grę zapisaną – zadziała bez internetu.':'Otwórz tę stronę z internetem, żeby zapisała się do gry offline.';
+}
 
 /* ---------- Udostępnianie ---------- */
 const shareUrl=()=>location.origin+location.pathname+'?g='+code;
 let qrLib=null;
 function loadQr(){
   if(!qrLib)qrLib=new Promise((ok,no)=>{const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    s.src='../vendor/qrcode.min.js';
     s.onload=()=>ok(window.qrcode);s.onerror=()=>{qrLib=null;no();};document.head.appendChild(s);});
   return qrLib;
 }
@@ -706,7 +1084,11 @@ async function share(statusEl){
 }
 $('lobbyShare').onclick=()=>share($('lobbyStatus'));
 $('shareLink').onclick=()=>share($('shareStatus'));
-$('codeChip').onclick=()=>{$('shareCode').textContent=code;$('shareStatus').textContent='';drawQr($('shareQr'));$('shareDlg').showModal();};
+$('codeChip').onclick=()=>{
+  if(wifiHost){renderNet();$('netDlg').showModal();return;}
+  if(wifiGuest){if(!(guestLink&&guestLink.open))guestPair();else setMsg('Połączono z gospodarzem.');return;}
+  $('shareCode').textContent=code;$('shareStatus').textContent='';drawQr($('shareQr'));$('shareDlg').showModal();
+};
 document.querySelectorAll('dialog').forEach(d=>{
   d.querySelector('.x').onclick=()=>d.close();
   d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();
@@ -730,14 +1112,14 @@ window.addEventListener('resize',()=>{if(g&&g.status!=='lobby')renderBoard();});
 
 if(window.Ekran)Ekran.attach($('wakeBtn'),'short');
 
-if(solo){
-  try{sgame=JSON.parse(store.get(SOLO_KEY));}catch(e){sgame=null;}
-  if(!sgame||!sgame.game||!sgame.game.players)location.replace('./');
-  else{
-    document.querySelector('.bar .back').href='./';document.querySelector('.bar .back').title='Menu gry';
-    setGame(soloView());runBots();
-  }
-}else render();
+if(local||wifi){document.querySelector('.bar .back').href='./';document.querySelector('.bar .back').title='Menu gry';}
+if(local){try{sgame=JSON.parse(store.get(LOCAL_KEY));}catch(e){sgame=null;}}
+if(solo&&!(sgame&&sgame.game&&sgame.game.players))location.replace('./');
+else if(local&&sgame&&sgame.game&&sgame.game.players){setGame(localView());runBots();}
+else{sgame=wifiHost?null:sgame;render();}
+
+// Strona i gra zapisują się w telefonie, żeby działały bez internetu (np. w samolocie).
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/punkty/sw.js',{scope:'/punkty/'}).then(()=>navigator.serviceWorker.ready).then(()=>{if(!$('home').hidden)renderOffline();}).catch(()=>{});
 if(code)poll(true);
 </script>
 </body>

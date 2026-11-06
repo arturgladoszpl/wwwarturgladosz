@@ -579,7 +579,7 @@ $('leaveGame').onclick=()=>{
 let qrLib=null;
 function loadQr(){
   if(!qrLib)qrLib=new Promise((ok,no)=>{const s=document.createElement('script');
-    s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js';
+    s.src='vendor/qrcode.min.js';
     s.onload=()=>ok(window.qrcode);s.onerror=()=>{qrLib=null;no();};document.head.appendChild(s);});
   return qrLib;
 }
@@ -840,6 +840,8 @@ render();
   const code=new URLSearchParams(location.search).get('g')||store.get(NET_KEY);
   if(code)joinGame(code);
 }
+// Licznik i Płytki zapisują się w telefonie, żeby działały bez internetu.
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/punkty/sw.js',{scope:'/punkty/'}).catch(()=>{});
 </script>
 </body>
 </html>

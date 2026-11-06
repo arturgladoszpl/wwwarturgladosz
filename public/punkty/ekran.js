@@ -81,5 +81,7 @@
       });
       render();enable();
     },
+    // Włącza bez zapamiętywania (np. w grze przez Wi‑Fi, gdzie zgaśnięcie ekranu zrywa połączenie).
+    force(){if(!on){on=true;}enable();render();},
   };
 })();

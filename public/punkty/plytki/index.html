@@ -312,6 +312,13 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <p class="status" id="pairStatus" role="status"></p>
 </dialog>
 
+<dialog id="lostDlg">
+  <button class="x" type="button" aria-label="Zamknij">✕</button>
+  <h2>Połączenie przerwane</h2>
+  <p class="muted" style="margin:0 0 12px">Gra jest zapisana u gospodarza. Poproś go: „📶” → „Połącz gracza ponownie”, a potem zeskanuj jego kod.</p>
+  <button class="btn primary wide" id="lostBtn">Zeskanuj kod gospodarza<small>Potem gospodarz zeskanuje Twój</small></button>
+</dialog>
+
 <dialog id="netDlg">
   <button class="x" type="button" aria-label="Zamknij">✕</button>
   <h2>Gracze przez Wi‑Fi</h2>
@@ -480,6 +487,8 @@ function renderInfo(){
   }
   if(!g.me&&!local)parts.push('Oglądasz grę.');
   if(wifiGuest&&!(guestLink&&guestLink.open))parts.push('<b>Brak połączenia z gospodarzem.</b>');
+  const offs=g.status==='play'?g.players.filter(p=>p.off):[];
+  if(wifiHost&&offs.length)parts.push('<b>Bez połączenia: '+offs.map(p=>esc(p.name)).join(', ')+'</b> – dotknij 📶.');
   parts.push('<span style="float:right">Worek: <b>'+g.bag+'</b></span>');
   info.innerHTML=parts.join(' ');
 }
@@ -999,7 +1008,7 @@ function hostWire(pc,dc){
       localAct(m.path,m.data||{},pid);
     }
   },()=>{
-    if(pid&&links.get(pid)===link)links.delete(pid);
+    if(pid&&links.get(pid)===link){links.delete(pid);if(sgame&&sgame.game&&sgame.game.status==='play'&&navigator.vibrate)try{navigator.vibrate(200);}catch(e){}}
     if(sgame&&sgame.game){setGame(localView());broadcast();}else{renderWifi();sendLobby();}
     if($('netDlg').open)renderNet();
   });
@@ -1057,7 +1066,10 @@ async function guestPair(){
     const dc=await ans.ready;
     if(!alive()){ans.pc.close();return;}
     if(guestLink)guestLink.close();
-    guestLink=W.wire(ans.pc,dc,onHostMsg,()=>{if(g){setMsg('Połączenie z gospodarzem przerwane. Dotknij „📶 Połącz”.',true);render();}else{renderWifi();wifiStatus('Połączenie z gospodarzem przerwane.');}});
+    guestLink=W.wire(ans.pc,dc,onHostMsg,()=>{
+      if(leaving)return;
+      if(g){render();showLost();}else{renderWifi();wifiStatus('Połączenie z gospodarzem przerwane.');}
+    });
     guestLink.send({t:'hello',id:deviceId,name:name||(g&&g.me&&(g.players.find(p=>p.id===g.me.id)||{}).name)||'Gracz'});
     $('pairDlg').close();
     wifiStatus('');render();
@@ -1134,6 +1146,22 @@ function renderResume(){
   $('resumeBox').hidden=!items.length;box.innerHTML='';
   items.forEach(it=>{const a=el('a','btn wide primary');a.href=it.href;a.textContent=it.title;a.appendChild(el('small',null,it.sub));box.appendChild(a);});
 }
+
+/* ---------- Zabezpieczenia gry przez Wi‑Fi ---------- */
+// Wyjście ze strony zrywa połączenie (bez internetu wraca się tylko przez ponowne zeskanowanie kodów), więc pytamy.
+let leaving=false;
+const wifiLive=()=>!!wifi&&!(g&&g.status==='end')&&(!!(g&&g.status==='play')||links.size>0||!!(guestLink&&guestLink.open));
+const LEAVE_Q='Wyjście przerwie połączenie z grą przez Wi‑Fi. Gra zostaje zapisana – wrócisz przez „Wróć do gry” i ponowne zeskanowanie kodów. Wyjść?';
+window.addEventListener('beforeunload',e=>{if(!leaving&&wifiLive()){e.preventDefault();e.returnValue='';}});
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[href]');
+  if(!a||!wifiLive())return;
+  if(!confirm(LEAVE_Q)){e.preventDefault();e.stopPropagation();return;}
+  leaving=true;
+},true);
+// Gracz: okno szybkiego powrotu po zerwaniu połączenia.
+function showLost(){if(!$('lostDlg').open&&!$('pairDlg').open)$('lostDlg').showModal();}
+$('lostBtn').onclick=()=>{$('lostDlg').close();guestPair();};
 
 /* ---------- Zegar: czas na ruch ---------- */
 // Włączany w trakcie gry. W grze na tym telefonie i przez Wi‑Fi ustawia go ten, kto liczy grę (gospodarz),
@@ -1260,13 +1288,13 @@ setInterval(()=>{if(!document.hidden)poll();},POLL_MS);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)poll();});
 window.addEventListener('resize',()=>{if(g&&g.status!=='lobby')renderBoard();});
 
-if(window.Ekran)Ekran.attach($('wakeBtn'),'short');
+if(window.Ekran){Ekran.attach($('wakeBtn'),'short');if(wifi)Ekran.force();}
 
 if(local||wifi){document.querySelector('.bar .back').href='./';document.querySelector('.bar .back').title='Menu gry';}
 if(local){try{sgame=JSON.parse(store.get(LOCAL_KEY));}catch(e){sgame=null;}}
 if(solo&&!(sgame&&sgame.game&&sgame.game.players))location.replace('./');
 else if(local&&sgame&&sgame.game&&sgame.game.players){setGame(localView());runBots();}
-else if(wifiGuest&&resumeGuest()){setGame({...resumeGuest().view,timerLeft:null});}
+else if(wifiGuest&&resumeGuest()){setGame({...resumeGuest().view,timerLeft:null});showLost();}
 else{sgame=wifiHost?null:sgame;render();}
 
 // Strona i gra zapisują się w telefonie, żeby działały bez internetu (np. w samolocie).

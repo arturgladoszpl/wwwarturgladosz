@@ -140,6 +140,18 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 .hist li:first-child{border-top:0;padding-top:0}
 .hist .when{color:var(--muted);font-size:.84rem}
 .hist b{font-weight:800}
+/* Pełna linia (6 płytek) albo 12+ pkt w jednym ruchu */
+.wow{position:fixed;inset:0;z-index:60;pointer-events:none;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.wow .banner{background:var(--accent);color:#fff;border-radius:22px;padding:18px 28px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.35);animation:wowIn 2.6s cubic-bezier(.2,1.4,.4,1) forwards}
+.wow .banner b{display:block;font-size:3rem;line-height:1;font-weight:900}
+.wow .banner span{display:block;font-size:1.25rem;font-weight:800;margin-top:6px}
+.wow .banner small{display:block;font-size:.95rem;opacity:.9;margin-top:2px}
+.wow i{position:absolute;top:-20px;width:10px;height:14px;border-radius:2px;animation:wowFall linear forwards}
+@keyframes wowIn{0%{transform:scale(.2) rotate(-8deg);opacity:0}12%{transform:scale(1.12) rotate(2deg);opacity:1}22%{transform:scale(1) rotate(0)}85%{transform:scale(1);opacity:1}100%{transform:scale(.9);opacity:0}}
+@keyframes wowFall{to{transform:translateY(110vh) rotate(720deg);opacity:.8}}
+.cell.wowcell .tile{animation:wowTile .45s ease-in-out 4 alternate}
+@keyframes wowTile{to{transform:scale(1.18);box-shadow:0 0 0 4px #FFE11A,0 0 18px #FFE11A}}
+@media (prefers-reduced-motion:reduce){.wow i{display:none}.wow .banner{animation-duration:2.6s;animation-timing-function:step-end}.cell.wowcell .tile{animation:none}}
 .handoff{background:var(--bg);padding:14px 12px max(16px,env(safe-area-inset-bottom));text-align:center}
 .handoff p{margin:0}
 .handoff h2{margin:2px 0 10px;font-size:1.5rem}
@@ -418,7 +430,9 @@ const boardMap=()=>new Map(g.board.map(([x,y,t])=>[key(x,y),t]));
 
 function setGame(next){
   const sameTurn=g&&next.turn===g.turn&&next.status===g.status&&g.board.length===next.board.length;
+  const firstView=!g;
   g=next;
+  checkWow(firstView);
   syncClock();
   if(code&&g.me&&Array.isArray(g.players))rememberOnline(g);
   if(g.status==='end'&&Array.isArray(g.players))rememberFinished(g);
@@ -512,6 +526,59 @@ function renderInfo(){
   parts.push('<span style="float:right">Worek: <b>'+g.bag+'</b></span>');
   info.innerHTML=parts.join(' ');
 }
+/* ---------- Świetny ruch: pełna linia albo 12+ pkt ---------- */
+let wowSeen=null,wowCells=new Set();
+// Linie (poziome i pionowe) przechodzące przez położone płytki, które mają 6 płytek.
+function fullLines(board,cells){
+  const has=new Set(board.map(([x,y])=>x+','+y)),out=new Set();
+  cells.forEach(([x,y])=>[[1,0],[0,1]].forEach(([dx,dy])=>{
+    let a=0,b=0;
+    while(has.has((x-(a+1)*dx)+','+(y-(a+1)*dy)))a++;
+    while(has.has((x+(b+1)*dx)+','+(y+(b+1)*dy)))b++;
+    if(a+b+1===6)for(let k=-a;k<=b;k++)out.add((x+k*dx)+','+(y+k*dy));
+  }));
+  return out;
+}
+function checkWow(firstView){
+  const l=g&&g.last;
+  const k=l&&l.cells&&l.cells.length?[l.player,l.score,l.cells.map(c=>c.join(',')).join(';')].join('|'):null;
+  const fresh=k&&k!==wowSeen;wowSeen=k;
+  if(!fresh||firstView)return;
+  const full=fullLines(g.board,l.cells);
+  if(!full.size&&l.score<12)return;
+  const who=g.players.find(p=>p.id===l.player);
+  wowCells=full;
+  showWow(full.size?'Pełna linia!':'Świetny ruch!',l.score,who?who.name:'');
+  setTimeout(()=>{wowCells=new Set();if(g)render();},2600);
+}
+function showWow(title,score,name){
+  const old=document.querySelector('.wow');if(old)old.remove();
+  const w=el('div','wow');w.setAttribute('role','status');
+  const b=el('div','banner');b.appendChild(el('b',null,'+'+score));b.appendChild(el('span',null,title));if(name)b.appendChild(el('small',null,name));
+  w.appendChild(b);
+  const colors=['#E53935','#FB8C00','#FDD835','#43A047','#1E88E5','#8E24AA'];
+  for(let i=0;i<70;i++){
+    const c=el('i');c.style.left=Math.random()*100+'%';c.style.background=colors[i%6];
+    c.style.animationDuration=(1.6+Math.random()*1.4)+'s';c.style.animationDelay=(Math.random()*.5)+'s';
+    w.appendChild(c);
+  }
+  document.body.appendChild(w);
+  if(navigator.vibrate)try{navigator.vibrate([60,40,60,40,120]);}catch(e){}
+  fanfare();
+  setTimeout(()=>w.remove(),3200);
+}
+function fanfare(){
+  if(!audio)return;
+  try{
+    audio.resume();
+    [523,659,784,1047].forEach((f,i)=>{
+      const t=audio.currentTime+i*0.11,o=audio.createOscillator(),v=audio.createGain();
+      o.type='triangle';o.frequency.value=f;v.gain.setValueAtTime(0.0001,t);
+      v.gain.exponentialRampToValueAtTime(0.3,t+0.02);v.gain.exponentialRampToValueAtTime(0.0001,t+(i===3?0.5:0.18));
+      o.connect(v);v.connect(audio.destination);o.start(t);o.stop(t+0.55);
+    });
+  }catch(e){}
+}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 function renderBoard(){
@@ -545,7 +612,7 @@ function renderBoard(){
   const lastSet=new Set(g.last&&g.last.cells?g.last.cells.map(([x,y])=>key(x,y)):[]);
   for(const [k,t] of bm){
     const [x,y]=k.split(',').map(Number);
-    const c=el('div','cell'+(lastSet.has(k)?' last':''));c.style.left=(x-minX)*cell+'px';c.style.top=(y-minY)*cell+'px';
+    const c=el('div','cell'+(lastSet.has(k)?' last':'')+(wowCells.has(k)?' wowcell':''));c.style.left=(x-minX)*cell+'px';c.style.top=(y-minY)*cell+'px';
     c.appendChild(tileEl(t));inner.appendChild(c);
   }
   pending.forEach((p,n)=>{

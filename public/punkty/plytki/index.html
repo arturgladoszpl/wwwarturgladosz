@@ -125,6 +125,11 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 .scan::after{content:"";position:absolute;inset:14%;border:3px solid rgba(255,255,255,.85);border-radius:12px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
 .dot.off{background:var(--bad)}
+.clock{flex:none;font-weight:800;font-variant-numeric:tabular-nums;font-size:1rem;padding:5px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.clock.low{background:var(--bad);border-color:var(--bad);color:#fff}
+.clock.over{animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.clock.over{animation:none}}
 .handoff{background:var(--bg);padding:14px 12px max(16px,env(safe-area-inset-bottom));text-align:center}
 .handoff p{margin:0}
 .handoff h2{margin:2px 0 10px;font-size:1.5rem}
@@ -246,6 +251,8 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <div class="bar">
     <a class="back" href="/punkty/" aria-label="Wróć do licznika" title="Wróć do licznika" style="font-size:1.3rem;padding:0 4px">←</a>
     <span class="title" id="gameTitle">Płytki</span>
+    <span class="clock" id="clock" role="timer" aria-live="off" hidden></span>
+    <button class="chip" id="timerBtn" title="Czas na ruch" aria-label="Czas na ruch">⏱</button>
     <button class="chip wake" id="wakeBtn" hidden>☀ Ekran</button>
     <button class="chip" id="codeChip" title="Kod gry i QR"></button>
   </div>
@@ -280,6 +287,13 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <div class="qr" id="shareQr"></div>
   <button class="btn wide" id="shareLink">Wyślij link do gry</button>
   <p class="status" id="shareStatus" role="status"></p>
+</dialog>
+
+<dialog id="timerDlg">
+  <button class="x" type="button" aria-label="Zamknij">✕</button>
+  <h2>Czas na ruch</h2>
+  <p class="muted" id="timerNote" style="margin:0 0 12px">Zegar odlicza czas każdego ruchu. Gdy minie, telefon gracza zawibruje i da sygnał – ruch nie przepada.</p>
+  <div class="stack" id="timerOpts"></div>
 </dialog>
 
 <dialog id="pairDlg">
@@ -373,6 +387,7 @@ const boardMap=()=>new Map(g.board.map(([x,y,t])=>[key(x,y),t]));
 function setGame(next){
   const sameTurn=g&&next.turn===g.turn&&next.status===g.status&&g.board.length===next.board.length;
   g=next;
+  syncClock();
   if(!sameTurn||!g.me||!myTurn()){pending=[];sel=-1;swapMode=false;marked.clear();}
   render();
 }
@@ -418,10 +433,11 @@ function renderLobby(){
 function renderGame(){
   $('gameTitle').textContent=g.title||'Płytki';
   // Wi‑Fi: gospodarz ma tu listę graczy i ponowne łączenie, gracz – przycisk „Połącz”, gdy połączenie padło.
-  if(wifiHost)$('codeChip').textContent='📶 Gracze';
-  else if(wifiGuest)$('codeChip').textContent=guestLink&&guestLink.open?'📶 Połączono':'📶 Połącz';
+  if(wifiHost){$('codeChip').textContent='📶';$('codeChip').title='Gracze przez Wi‑Fi';}
+  else if(wifiGuest){$('codeChip').textContent=guestLink&&guestLink.open?'📶':'📶 Połącz';$('codeChip').title='Połączenie z gospodarzem';}
   else $('codeChip').textContent=g.id;
   $('codeChip').hidden=solo;
+  $('timerBtn').setAttribute('aria-label',timerSec?'Czas na ruch: '+timerLabel(timerSec):'Czas na ruch');
   const sc=$('scores');sc.innerHTML='';
   g.players.forEach((p,i)=>{
     const d=el('div','score'+(g.status==='play'&&i===g.turn?' turn':''));
@@ -748,6 +764,7 @@ function localView(forId){
     players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null,off:!!(p.remote&&!(links.get(p.id)||{}).open)})),
     me:me?{id:me.id,hand:me.hand}:null,
     seat:many&&me?me.name:null,
+    timer:sgame.timer||0,timerLeft:sgame.timer?sgame.timer*1000-(Date.now()-(sgame.turnStart||Date.now())):null,
     handoff:forId&&forId.startsWith('r-')?null:needHandoff()};
 }
 function saveLocal(){store.set(LOCAL_KEY,JSON.stringify(sgame));}
@@ -762,7 +779,12 @@ function finishLocal(){
   store.set(SOLO_STATS,JSON.stringify(st));
 }
 // Po każdej zmianie: zapis, widok na tym telefonie i wysyłka do graczy przez Wi‑Fi.
-function changed(){saveLocal();finishLocal();setGame(localView());broadcast();}
+function changed(){markTurn();saveLocal();finishLocal();setGame(localView());broadcast();}
+// Początek bieżącego ruchu (do zegara): zmienia się, gdy ruch przechodzi na następnego gracza.
+function markTurn(force){
+  const k=turnKeyOf(sgame.game);
+  if(force||k!==sgame.turnKey){sgame.turnKey=k;sgame.turnStart=Date.now();}
+}
 
 function startSolo(settings){
   const names=settings.names||[settings.name||''];
@@ -770,7 +792,8 @@ function startSolo(settings){
   const players=names.map((n,i)=>({id:i?'h'+(i+1):'me',name:n||(many?'Gracz '+(i+1):'Ty')}));
   (settings.levels||[]).forEach((lv,i)=>players.push({id:'bot'+(i+1),name:'Komputer '+(i+1),level:lv}));
   const title=!many?'Gra z komputerem':'Gra na jednym telefonie';
-  sgame={settings:{names,levels:(settings.levels||[]).slice()},title,game:E.deal({status:'lobby',players})};
+  sgame={settings:{names,levels:(settings.levels||[]).slice()},title,timer:(sgame&&sgame.timer)||0,game:E.deal({status:'lobby',players})};
+  markTurn(true);
   saveLocal();shown=null;g=null;
   if(!solo){location.href='?solo=1';return;}
   setGame(localView());runBots();
@@ -988,7 +1011,7 @@ $('wifiStart').onclick=()=>{
 };
 function newWifiRound(){
   const players=sgame.game.players.map(p=>({id:p.id,name:p.name,remote:p.remote,level:p.level}));
-  sgame={title:sgame.title,game:E.deal({status:'lobby',players})};
+  sgame={title:sgame.title,timer:sgame.timer||0,game:E.deal({status:'lobby',players})};
   shown=null;changed();
 }
 // Gospodarz w trakcie gry: lista graczy i ponowne łączenie.
@@ -1062,6 +1085,84 @@ async function renderOffline(){
   try{ok=!!(reg&&reg.active&&await caches.match('/punkty/plytki/wifi.js'));}catch(e){}
   box.textContent=ok?'✓ Ten telefon ma grę zapisaną – zadziała bez internetu.':'Otwórz tę stronę z internetem, żeby zapisała się do gry offline.';
 }
+
+/* ---------- Zegar: czas na ruch ---------- */
+// Włączany w trakcie gry. W grze na tym telefonie i przez Wi‑Fi ustawia go ten, kto liczy grę (gospodarz),
+// i wszyscy widzą to samo odliczanie. W grze online każdy telefon odlicza sam, od chwili gdy zobaczy zmianę ruchu.
+const TIMER_OPTS=[0,30,60,120,180];
+const timerLabel=s=>s<60?s+' s':(s/60)+' min';
+let timerSec=0,deadline=0,turnKey='',alerted=false;
+function turnKeyOf(v){
+  const bag=Array.isArray(v.bag)?v.bag.length:v.bag;
+  return v.status+'|'+v.turn+'|'+v.board.length+'|'+bag+'|'+(v.last?[v.last.player,v.last.score,v.last.swapped||0,v.last.passed?1:0].join(','):'');
+}
+function syncClock(){
+  const k=turnKeyOf(g),changedTurn=k!==turnKey;
+  if(g.timer!=null){
+    timerSec=g.timer;
+    if(g.timerLeft!=null)deadline=Date.now()+g.timerLeft;
+  }else{
+    timerSec=Number(store.get('plytki-czas'))||0;
+    if(changedTurn)deadline=Date.now()+timerSec*1000;
+  }
+  if(changedTurn){turnKey=k;alerted=false;}
+  tick();
+}
+const fmtLeft=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');};
+function tick(){
+  const c=$('clock');
+  const cur=g&&g.players[g.turn];
+  if(!g||g.status!=='play'||!timerSec||$('game').hidden||!cur||cur.level){c.hidden=true;return;}
+  const left=Math.max(0,deadline-Date.now());
+  c.hidden=false;
+  c.classList.toggle('low',left<=10000);
+  c.textContent=fmtLeft(left);
+  c.classList.toggle('over',!left);
+  c.title=left?'Czas na ruch':'Czas minął!';
+  if(!left&&!alerted){
+    alerted=true;
+    // Sygnał tylko na telefonie gracza, który ma ruch (w grze na jednym telefonie – na tym telefonie).
+    if(myTurn()||(local&&!cur.remote&&!cur.level)){
+      if(navigator.vibrate)try{navigator.vibrate([300,120,300]);}catch(e){}
+      beep();
+    }
+  }
+}
+setInterval(tick,250);
+let audio=null;
+// Dźwięk wymaga wcześniejszego dotknięcia ekranu (zwłaszcza na iPhonie) – przygotowujemy go przy pierwszym dotknięciu.
+document.addEventListener('pointerdown',()=>{
+  if(audio)return;
+  try{audio=new (window.AudioContext||window.webkitAudioContext)();}catch(e){audio=null;}
+},{once:false,passive:true});
+function beep(){
+  if(!audio)return;
+  try{
+    audio.resume();
+    [0,0.35].forEach(t=>{
+      const o=audio.createOscillator(),v=audio.createGain();
+      o.frequency.value=880;v.gain.setValueAtTime(0.0001,audio.currentTime+t);
+      v.gain.exponentialRampToValueAtTime(0.4,audio.currentTime+t+0.02);v.gain.exponentialRampToValueAtTime(0.0001,audio.currentTime+t+0.25);
+      o.connect(v);v.connect(audio.destination);o.start(audio.currentTime+t);o.stop(audio.currentTime+t+0.3);
+    });
+  }catch(e){}
+}
+function setTimer(sec){
+  if(local&&sgame){sgame.timer=sec;markTurn(true);changed();}
+  else{store.set('plytki-czas',String(sec));timerSec=sec;deadline=Date.now()+sec*1000;alerted=false;render();}
+  $('timerDlg').close();
+}
+$('timerBtn').onclick=()=>{
+  if(wifiGuest){setMsg('Czas na ruch ustawia gospodarz gry.');return;}
+  $('timerNote').textContent='Zegar odlicza czas każdego ruchu. Gdy minie, telefon gracza zawibruje i da sygnał – ruch nie przepada.'
+    +(code?' W grze online ustawienie dotyczy tylko tego telefonu.':wifiHost?' Wszyscy gracze zobaczą to samo odliczanie.':'');
+  const box=$('timerOpts');box.innerHTML='';
+  TIMER_OPTS.forEach(sec=>{
+    const b=el('button','btn wide'+(sec===timerSec?' primary':''),sec?timerLabel(sec)+' na ruch':'Bez limitu czasu');
+    b.type='button';b.onclick=()=>setTimer(sec);box.appendChild(b);
+  });
+  $('timerDlg').showModal();
+};
 
 /* ---------- Udostępnianie ---------- */
 const shareUrl=()=>location.origin+location.pathname+'?g='+code;

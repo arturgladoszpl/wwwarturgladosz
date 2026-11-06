@@ -300,6 +300,13 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <h2>Czas na ruch</h2>
   <p class="muted" id="timerNote" style="margin:0 0 12px">Zegar odlicza czas każdego ruchu. Gdy minie, telefon gracza zawibruje i da sygnał – ruch nie przepada.</p>
   <div class="stack" id="timerOpts"></div>
+  <form class="row" id="timerForm" style="margin-top:12px">
+    <label for="timerSecs" class="muted" style="white-space:nowrap">Własny czas:</label>
+    <input class="text" id="timerSecs" type="number" inputmode="numeric" min="5" max="3600" step="1" placeholder="np. 45" style="width:76px;flex:none;padding:10px 8px">
+    <span class="muted">s</span>
+    <button class="btn primary" type="submit">Ustaw</button>
+  </form>
+  <p class="status" id="timerErr" role="status"></p>
 </dialog>
 
 <dialog id="pairDlg">
@@ -1167,7 +1174,8 @@ $('lostBtn').onclick=()=>{$('lostDlg').close();guestPair();};
 // Włączany w trakcie gry. W grze na tym telefonie i przez Wi‑Fi ustawia go ten, kto liczy grę (gospodarz),
 // i wszyscy widzą to samo odliczanie. W grze online każdy telefon odlicza sam, od chwili gdy zobaczy zmianę ruchu.
 const TIMER_OPTS=[0,30,60,120,180];
-const timerLabel=s=>s<60?s+' s':(s/60)+' min';
+// 45 → „45 s”, 120 → „2 min”, 90 → „1 min 30 s”.
+const timerLabel=s=>s<60?s+' s':s%60?Math.floor(s/60)+' min '+(s%60)+' s':(s/60)+' min';
 let timerSec=0,deadline=0,turnKey='',alerted=false;
 function turnKeyOf(v){
   const bag=Array.isArray(v.bag)?v.bag.length:v.bag;
@@ -1238,7 +1246,15 @@ $('timerBtn').onclick=()=>{
     const b=el('button','btn wide'+(sec===timerSec?' primary':''),sec?timerLabel(sec)+' na ruch':'Bez limitu czasu');
     b.type='button';b.onclick=()=>setTimer(sec);box.appendChild(b);
   });
+  $('timerSecs').value=timerSec&&!TIMER_OPTS.includes(timerSec)?timerSec:'';$('timerErr').textContent='';
   $('timerDlg').showModal();
+};
+// Dowolny czas wpisany w sekundach (5 s – 60 min).
+$('timerForm').onsubmit=e=>{
+  e.preventDefault();
+  const v=Math.round(Number($('timerSecs').value));
+  if(!Number.isFinite(v)||v<5||v>3600){$('timerErr').textContent='Wpisz liczbę sekund od 5 do 3600.';return;}
+  setTimer(v);
 };
 
 /* ---------- Udostępnianie ---------- */

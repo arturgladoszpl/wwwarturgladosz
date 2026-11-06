@@ -126,6 +126,9 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);flex:none}
 .dot.off{background:var(--bad)}
 .clock{flex:none;font-weight:800;font-variant-numeric:tabular-nums;font-size:1rem;padding:5px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.timerform{border:1px solid var(--line);border-radius:12px;padding:6px 8px 6px 14px;gap:6px}
+.timerform.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink) inset}
+.timerform label{font-weight:600;color:var(--ink)}
 .clock.low{background:var(--bad);border-color:var(--bad);color:#fff}
 .clock.over{animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{opacity:.35}}
@@ -300,7 +303,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <h2>Czas na ruch</h2>
   <p class="muted" id="timerNote" style="margin:0 0 12px">Zegar odlicza czas każdego ruchu. Gdy minie, telefon gracza zawibruje i da sygnał – ruch nie przepada.</p>
   <div class="stack" id="timerOpts"></div>
-  <form class="row" id="timerForm" style="margin-top:12px">
+  <form class="row timerform" id="timerForm">
     <label for="timerSecs" class="muted" style="white-space:nowrap">Własny czas:</label>
     <input class="text" id="timerSecs" type="number" inputmode="numeric" min="5" max="3600" step="1" placeholder="np. 45" style="width:76px;flex:none;padding:10px 8px">
     <span class="muted">s</span>
@@ -1173,7 +1176,7 @@ $('lostBtn').onclick=()=>{$('lostDlg').close();guestPair();};
 /* ---------- Zegar: czas na ruch ---------- */
 // Włączany w trakcie gry. W grze na tym telefonie i przez Wi‑Fi ustawia go ten, kto liczy grę (gospodarz),
 // i wszyscy widzą to samo odliczanie. W grze online każdy telefon odlicza sam, od chwili gdy zobaczy zmianę ruchu.
-const TIMER_OPTS=[0,30,60,120,180];
+const TIMER_OPTS=[0,30,60,180];  // między 1 a 3 min: pole na własny czas w sekundach
 // 45 → „45 s”, 120 → „2 min”, 90 → „1 min 30 s”.
 const timerLabel=s=>s<60?s+' s':s%60?Math.floor(s/60)+' min '+(s%60)+' s':(s/60)+' min';
 let timerSec=0,deadline=0,turnKey='',alerted=false;
@@ -1245,7 +1248,9 @@ $('timerBtn').onclick=()=>{
   TIMER_OPTS.forEach(sec=>{
     const b=el('button','btn wide'+(sec===timerSec?' primary':''),sec?timerLabel(sec)+' na ruch':'Bez limitu czasu');
     b.type='button';b.onclick=()=>setTimer(sec);box.appendChild(b);
+    if(sec===60)box.appendChild($('timerForm'));  // własny czas zamiast „2 min”
   });
+  $('timerForm').classList.toggle('on',!!timerSec&&!TIMER_OPTS.includes(timerSec));
   $('timerSecs').value=timerSec&&!TIMER_OPTS.includes(timerSec)?timerSec:'';$('timerErr').textContent='';
   $('timerDlg').showModal();
 };

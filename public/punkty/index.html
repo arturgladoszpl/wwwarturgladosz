@@ -136,7 +136,7 @@ a.btn.wide{display:block;text-align:left}
       <button class="btn" id="resetBtn" hidden>Zakończ rundę</button>
       <button class="btn" id="histBtn">Historia</button>
       <button class="btn" id="fileBtn">Plik</button>
-      <a class="btn tiles-link" href="plytki/">Płytki ▸</a>
+      <a class="btn tiles-link" id="tilesLink" href="plytki/">Płytki ▸</a>
     </div>
   </header>
   <button class="netbar" id="netbar"><span class="led" id="led"></span><span id="netMode">Gra offline</span><span class="sp"></span><span id="netInfo"></span></button>
@@ -854,6 +854,15 @@ render();
 {
   const code=new URLSearchParams(location.search).get('g')||store.get(NET_KEY);
   if(code)joinGame(code);
+}
+// Niedokończona gra w Płytki na tym telefonie (lokalna, przez Wi‑Fi albo online) – przycisk prowadzi do niej.
+{
+  const rd=k=>{try{return JSON.parse(localStorage.getItem(k));}catch(e){return null;}};
+  const play=sg=>!!(sg&&sg.game&&sg.game.status==='play');
+  const gst=rd('plytki-wifi-gosc'),on=rd('plytki-online-ostatnie');
+  const fresh=t=>Date.now()-t<3*86400000;
+  const any=play(rd('plytki-wifi'))||play(rd('plytki-solo'))||(gst&&gst.view&&gst.view.status==='play'&&fresh(gst.at))||(Array.isArray(on)&&on.some(x=>fresh(x.at)));
+  if(any){$('tilesLink').textContent='Wróć do płytek ▸';$('tilesLink').title='Masz rozpoczętą grę w płytki';}
 }
 // Licznik i Płytki zapisują się w telefonie, żeby działały bez internetu.
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/punkty/sw.js',{scope:'/punkty/'}).catch(()=>{});

@@ -130,6 +130,8 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 .clock.over{animation:blink 1s steps(2,start) infinite}
 @keyframes blink{to{opacity:.35}}
 @media (prefers-reduced-motion:reduce){.clock.over{animation:none}}
+.resume{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.resume a.btn{display:block;text-decoration:none}
 .handoff{background:var(--bg);padding:14px 12px max(16px,env(safe-area-inset-bottom));text-align:center}
 .handoff p{margin:0}
 .handoff h2{margin:2px 0 10px;font-size:1.5rem}
@@ -141,6 +143,10 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 <!-- Bez kodu gry: utwórz albo dołącz -->
 <div class="page" id="home" hidden>
   <div class="top"><h1>Płytki</h1><a class="back" href="/punkty/">← Licznik</a></div>
+  <div class="card resume" id="resumeBox" hidden>
+    <h2>Wróć do gry</h2>
+    <div class="stack" id="resumeList"></div>
+  </div>
   <div class="card">
     <h2>Na tym telefonie</h2>
     <p class="muted" style="margin:0 0 10px;font-size:.92rem">Bez internetu. Z komputerem albo kilka osób – po każdym ruchu podajecie sobie telefon.</p>
@@ -388,6 +394,7 @@ function setGame(next){
   const sameTurn=g&&next.turn===g.turn&&next.status===g.status&&g.board.length===next.board.length;
   g=next;
   syncClock();
+  if(code&&g.me&&Array.isArray(g.players))rememberOnline(g);
   if(!sameTurn||!g.me||!myTurn()){pending=[];sel=-1;swapMode=false;marked.clear();}
   render();
 }
@@ -841,6 +848,7 @@ let soloSet=(()=>{
 })();
 const saveSoloSet=()=>store.set('plytki-solo-ustawienia',JSON.stringify(soloSet));
 function renderHome(){
+  renderResume();
   const pp=$('soloPeople');
   if(pp.children.length!==soloSet.names.length){
     pp.innerHTML='';
@@ -922,7 +930,10 @@ function renderWifi(){
 }
 $('wifiName').value=soloSet.names[0]||'';
 $('wifiName').oninput=()=>{soloSet.names[0]=$('wifiName').value;saveSoloSet();if(wifiHost){renderWifi();sendLobby();}};
-$('wifiHostBtn').onclick=()=>{store.set(WIFI_KEY,null);location.href='?wifi=host';};
+$('wifiHostBtn').onclick=()=>{
+  if(unfinished(readJson(WIFI_KEY))&&!confirm('Masz niedokończoną grę przez Wi‑Fi. Zacząć nową? Tamta zostanie usunięta.'))return;
+  store.set(WIFI_KEY,null);location.href='?wifi=host';
+};
 $('wifiJoinBtn').onclick=()=>{location.href='?wifi=join';};
 
 // Okno łączenia: kod QR do pokazania i/lub aparat do skanowania.
@@ -1061,6 +1072,7 @@ function onHostMsg(m){
   if(m.t==='lobby'){guestLobby=m.players;renderWifi();}
   else if(m.t==='view'){
     clearTimeout(guestBusy);busy=false;
+    store.set(GUEST_KEY,JSON.stringify({view:m.view,at:Date.now()}));
     const first=!g;setGame(m.view);if(first)render();
   }else if(m.t==='err'){
     clearTimeout(guestBusy);busy=false;
@@ -1084,6 +1096,43 @@ async function renderOffline(){
   let ok=false;
   try{ok=!!(reg&&reg.active&&await caches.match('/punkty/plytki/wifi.js'));}catch(e){}
   box.textContent=ok?'✓ Ten telefon ma grę zapisaną – zadziała bez internetu.':'Otwórz tę stronę z internetem, żeby zapisała się do gry offline.';
+}
+
+/* ---------- Powrót do rozpoczętej gry ---------- */
+// Niedokończone gry z tego telefonu: na tym telefonie, przez Wi‑Fi (gospodarz i gracz) i online.
+const GUEST_KEY='plytki-wifi-gosc',ONLINE_KEY='plytki-online-ostatnie';
+const DAY=86400000;
+function readJson(k){try{return JSON.parse(store.get(k));}catch(e){return null;}}
+const unfinished=sg=>!!(sg&&sg.game&&sg.game.players&&sg.game.status==='play');
+function resumeGuest(){const r=readJson(GUEST_KEY);return r&&r.view&&r.view.status==='play'&&Date.now()-r.at<3*DAY?r:null;}
+function rememberOnline(v){
+  let list=readJson(ONLINE_KEY);if(!Array.isArray(list))list=[];
+  // Kod gry bierzemy z adresu (odpowiedź na dołączenie ma w polu id coś innego).
+  list=list.filter(x=>x.code!==code&&/^[A-Z0-9]{6}$/.test(x.code));
+  if(v.status!=='end')list.unshift({code,title:v.title||'',players:v.players.map(p=>p.name+' '+p.score),at:Date.now()});
+  store.set(ONLINE_KEY,JSON.stringify(list.slice(0,3)));
+}
+// Krótki opis: kto gra i ile ma punktów, czyj ruch.
+function gameLine(players,turn){
+  const cur=players[turn];
+  return players.map(p=>p.name+' '+p.score).join(' · ')+(cur?' — ruch: '+cur.name:'');
+}
+function resumeItems(){
+  const out=[];
+  const w=readJson(WIFI_KEY);
+  if(unfinished(w))out.push({href:'?wifi=host',title:'Gra przez Wi‑Fi – jesteś gospodarzem',sub:gameLine(w.game.players,w.game.turn)+'. Gracze połączą się ponownie przez „📶”.'});
+  const gst=resumeGuest();
+  if(gst)out.push({href:'?wifi=join',title:'Gra przez Wi‑Fi – jesteś graczem',sub:gameLine(gst.view.players,gst.view.turn)+'. Połączysz się ponownie przez „📶 Połącz”.'});
+  const so=readJson(SOLO_KEY);
+  if(unfinished(so))out.push({href:'?solo=1',title:so.title||'Gra z komputerem',sub:gameLine(so.game.players,so.game.turn)});
+  const on=readJson(ONLINE_KEY);
+  if(Array.isArray(on))on.filter(x=>Date.now()-x.at<3*DAY).forEach(x=>out.push({href:'?g='+x.code,title:'Gra online '+x.code+(x.title?' – '+x.title:''),sub:x.players.join(' · ')}));
+  return out;
+}
+function renderResume(){
+  const items=resumeItems(),box=$('resumeList');
+  $('resumeBox').hidden=!items.length;box.innerHTML='';
+  items.forEach(it=>{const a=el('a','btn wide primary');a.href=it.href;a.textContent=it.title;a.appendChild(el('small',null,it.sub));box.appendChild(a);});
 }
 
 /* ---------- Zegar: czas na ruch ---------- */
@@ -1112,7 +1161,7 @@ const fmtLeft=ms=>{const s=Math.ceil(ms/1000);return Math.floor(s/60)+':'+String
 function tick(){
   const c=$('clock');
   const cur=g&&g.players[g.turn];
-  if(!g||g.status!=='play'||!timerSec||$('game').hidden||!cur||cur.level){c.hidden=true;return;}
+  if(!g||g.status!=='play'||!timerSec||$('game').hidden||!cur||cur.level||(wifiGuest&&!(guestLink&&guestLink.open))){c.hidden=true;return;}
   const left=Math.max(0,deadline-Date.now());
   c.hidden=false;
   c.classList.toggle('low',left<=10000);
@@ -1217,6 +1266,7 @@ if(local||wifi){document.querySelector('.bar .back').href='./';document.querySel
 if(local){try{sgame=JSON.parse(store.get(LOCAL_KEY));}catch(e){sgame=null;}}
 if(solo&&!(sgame&&sgame.game&&sgame.game.players))location.replace('./');
 else if(local&&sgame&&sgame.game&&sgame.game.players){setGame(localView());runBots();}
+else if(wifiGuest&&resumeGuest()){setGame({...resumeGuest().view,timerLeft:null});}
 else{sgame=wifiHost?null:sgame;render();}
 
 // Strona i gra zapisują się w telefonie, żeby działały bez internetu (np. w samolocie).

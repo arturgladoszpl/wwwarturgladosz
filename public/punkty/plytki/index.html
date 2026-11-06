@@ -135,6 +135,11 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 @media (prefers-reduced-motion:reduce){.clock.over{animation:none}}
 .resume{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 .resume a.btn{display:block;text-decoration:none}
+.hist{list-style:none;margin:0;padding:0}
+.hist li{padding:9px 0;border-top:1px solid var(--line);font-size:.92rem;line-height:1.4}
+.hist li:first-child{border-top:0;padding-top:0}
+.hist .when{color:var(--muted);font-size:.84rem}
+.hist b{font-weight:800}
 .handoff{background:var(--bg);padding:14px 12px max(16px,env(safe-area-inset-bottom));text-align:center}
 .handoff p{margin:0}
 .handoff h2{margin:2px 0 10px;font-size:1.5rem}
@@ -149,6 +154,10 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   <div class="card resume" id="resumeBox" hidden>
     <h2>Wróć do gry</h2>
     <div class="stack" id="resumeList"></div>
+  </div>
+  <div class="card" id="histBox" hidden>
+    <h2>Historia gier</h2>
+    <ul class="hist" id="histList"></ul>
   </div>
   <div class="card">
     <h2>Na tym telefonie</h2>
@@ -412,6 +421,7 @@ function setGame(next){
   g=next;
   syncClock();
   if(code&&g.me&&Array.isArray(g.players))rememberOnline(g);
+  if(g.status==='end'&&Array.isArray(g.players))rememberFinished(g);
   if(!sameTurn||!g.me||!myTurn()){pending=[];sel=-1;swapMode=false;marked.clear();}
   render();
 }
@@ -1151,7 +1161,36 @@ function resumeItems(){
   if(Array.isArray(on))on.filter(x=>Date.now()-x.at<3*DAY).forEach(x=>out.push({href:'?g='+x.code,title:'Gra online '+x.code+(x.title?' – '+x.title:''),sub:x.players.join(' · ')}));
   return out;
 }
+// Historia zakończonych gier z tego telefonu (wszystkie tryby), najnowsze na górze.
+const HIST_KEY='plytki-historia';
+function rememberFinished(v){
+  const mode=code?'Online '+code:wifiHost?'Przez Wi‑Fi (gospodarz)':wifiGuest?'Przez Wi‑Fi':(v.title||'Na tym telefonie');
+  const players=v.players.map(p=>({name:p.name,score:p.score}));
+  const key=mode+'|'+players.map(p=>p.name+':'+p.score).join(',')+'|'+(v.board?v.board.length:0);
+  let list=readJson(HIST_KEY);if(!Array.isArray(list))list=[];
+  if(list.some(x=>x.key===key))return;
+  list.unshift({key,mode,players,at:Date.now()});
+  store.set(HIST_KEY,JSON.stringify(list.slice(0,20)));
+}
+function renderHistory(){
+  const list=readJson(HIST_KEY),box=$('histList');
+  const items=Array.isArray(list)?list:[];
+  $('histBox').hidden=!items.length;box.innerHTML='';
+  items.forEach(x=>{
+    const li=el('li');
+    const d=new Date(x.at);
+    li.appendChild(el('div','when',d.toLocaleDateString('pl-PL',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'})+' · '+x.mode));
+    const top=Math.max(...x.players.map(p=>p.score));
+    const line=el('div');
+    x.players.slice().sort((a,b)=>b.score-a.score).forEach((p,i)=>{
+      if(i)line.appendChild(document.createTextNode(' · '));
+      line.appendChild(el(p.score===top?'b':'span',null,(p.score===top?'🏆 ':'')+p.name+' '+p.score));
+    });
+    li.appendChild(line);box.appendChild(li);
+  });
+}
 function renderResume(){
+  renderHistory();
   const items=resumeItems(),box=$('resumeList');
   $('resumeBox').hidden=!items.length;box.innerHTML='';
   items.forEach(it=>{const a=el('a','btn wide primary');a.href=it.href;a.textContent=it.title;a.appendChild(el('small',null,it.sub));box.appendChild(a);});

@@ -115,6 +115,12 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
 .round-res .win{font-weight:800}
 .games .btn small{display:block;color:var(--muted);font-weight:400;font-size:.82rem;margin-top:2px}
 .muted{color:var(--muted);font-size:.92rem;margin:0}
+a.btn{display:inline-block;text-decoration:none;text-align:center}
+a.btn.wide{display:block;text-align:left}
+.tiles-link{border-color:#2F6FD6;color:#2F6FD6}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tiles-link{border-color:#7FAAF2;color:#7FAAF2}}
+:root[data-theme="dark"] .tiles-link{border-color:#7FAAF2;color:#7FAAF2}
+.dlg-sub{margin:16px 0 8px;font-size:1rem}
 </style>
 </head>
 <body>
@@ -130,6 +136,7 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
       <button class="btn" id="resetBtn" hidden>Zakończ rundę</button>
       <button class="btn" id="histBtn">Historia</button>
       <button class="btn" id="fileBtn">Plik</button>
+      <a class="btn tiles-link" href="plytki/">Płytki ▸</a>
     </div>
   </header>
   <button class="netbar" id="netbar"><span class="led" id="led"></span><span id="netMode">Gra offline</span><span class="sp"></span><span id="netInfo"></span></button>
@@ -199,7 +206,13 @@ dialog p{margin:0 0 14px;color:var(--muted);font-size:.95rem;line-height:1.4}
   <div class="stack">
     <button class="btn wide" id="newOffline">Gra offline<small>Tylko na tym telefonie, działa bez internetu</small></button>
     <button class="btn wide" id="newOnline">Gra online<small>Każdy na swoim telefonie, z historią rund i statystykami</small></button>
-    <button class="btn wide" id="newTiles">Gra w płytki online<small id="newTilesHint">Plansza i płytki na telefonach, punkty liczą się same</small></button>
+  </div>
+  <h3 class="dlg-sub">Płytki</h3>
+  <div class="stack">
+    <button class="btn wide" id="newTiles">Płytki online<small id="newTilesHint">Plansza i płytki na telefonach, punkty liczą się same</small></button>
+    <a class="btn wide" id="newTilesWifi" href="plytki/?wifi=host">Płytki przez Wi‑Fi – utwórz grę<small>Bez internetu, np. w samolocie. Pokażesz kod QR pozostałym</small></a>
+    <a class="btn wide" href="plytki/?wifi=join">Płytki przez Wi‑Fi – dołącz<small>Zeskanujesz kod QR z telefonu gospodarza</small></a>
+    <a class="btn wide" href="plytki/">Płytki na tym telefonie<small>Z komputerem albo kilka osób na zmianę</small></a>
   </div>
   <p class="status" id="newStatus" role="status"></p>
   <div class="dlg-foot"><button class="btn" id="newCancel">Anuluj</button></div>
@@ -539,6 +552,8 @@ $('newTiles').onclick=async()=>{
   }catch(e){$('newStatus').textContent=e.message;b.disabled=false;}
 };
 $('newCancel').onclick=()=>$('newDlg').close();
+// Nowa gra przez Wi‑Fi: bez wznawiania poprzedniej partii gospodarza.
+$('newTilesWifi').onclick=()=>{try{localStorage.removeItem('plytki-wifi');}catch(e){}};
 // Każde okno zamyka się krzyżykiem albo dotknięciem tła obok niego.
 document.querySelectorAll('dialog').forEach(d=>{
   d.querySelector('.x').onclick=()=>d.close();

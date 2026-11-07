@@ -9,6 +9,8 @@
 //   POST /api/plytki/games/:g/play      {moves:[{i, x, y}]}  i = numer płytki na ręce
 //   POST /api/plytki/games/:g/swap      {idx:[...]}
 //   POST /api/plytki/games/:g/pass
+//   POST /api/plytki/games/:g/learn-ok  {on}  przed startem: czy wolno włączać podpowiedzi (tryb nauki)
+//   POST /api/plytki/games/:g/learn          gracz włącza sobie podpowiedzi (wszyscy widzą 🎓)
 
 import { deal, play, swap, pass, RuleError } from '../../../public/punkty/plytki/engine.js';
 
@@ -53,7 +55,8 @@ function view(game, rev, token) {
   return {
     id: game.id, title: game.title, status: game.status, rev, pk: game.pk || null,
     turn: game.turn, bag: game.bag.length, board: game.board, last: game.last || null,
-    players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score, tiles: p.hand.length, moves: p.moves })),
+    players: game.players.map(p => ({ id: p.id, name: p.name, score: p.score, tiles: p.hand.length, moves: p.moves, learn: !!p.learn })),
+    learnOk: !!game.learnOk,
     me: me ? { id: me.id, hand: me.hand } : null,
   };
 }
@@ -138,6 +141,14 @@ async function route(request, db, parts) {
     player(game, token);
     if (game.status !== 'lobby') throw new HttpError(400, 'Gra już się zaczęła.');
     deal(game, random);
+  } else if (action === 'learn-ok') {
+    player(game, token);
+    if (game.status !== 'lobby') throw new HttpError(400, 'Gra już się zaczęła.');
+    game.learnOk = !!data.on;
+  } else if (action === 'learn') {
+    const p = player(game, token);
+    if (!game.learnOk) throw new HttpError(400, 'W tej grze podpowiedzi są wyłączone.');
+    p.learn = true;
   } else if (action === 'play') {
     play(game, player(game, token), data.moves);
   } else if (action === 'swap') {

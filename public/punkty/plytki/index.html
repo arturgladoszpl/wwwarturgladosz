@@ -103,7 +103,18 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .hand button .tile{width:100%;height:100%}
 .hand button.sel .tile{box-shadow:0 0 0 3px var(--accent);transform:translateY(-4px)}
 .hand button.used{opacity:.2}
-.handbar{display:flex;justify-content:flex-end;max-width:420px;margin:0 auto 6px}
+.check{display:flex;gap:10px;align-items:flex-start;margin:4px 0 12px;font-weight:700;cursor:pointer}
+.check input{width:20px;height:20px;margin:2px 0 0;flex:none;accent-color:var(--accent)}
+.check small{display:block;font-weight:400;color:var(--muted);font-size:.85rem;margin-top:2px}
+.learncard{border-color:#E8B21E;box-shadow:0 0 0 1px #E8B21E inset}
+.learnpick .btn{flex:1;min-width:0;padding:10px 6px}
+.learnbar{margin:0 12px 6px;padding:6px 10px;border-radius:10px;background:#FFE11A;color:#3A3000;font-weight:800;font-size:.85rem;text-align:center;letter-spacing:.02em}
+.coach{margin:0 12px 6px;padding:8px 10px;border-radius:10px;font-size:.88rem;line-height:1.35;background:var(--surface);border:1px solid var(--line)}
+.coach.good{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,var(--surface))}
+.coach.warn{border-color:#E8B21E;background:color-mix(in srgb,#E8B21E 16%,var(--surface))}
+.coach.hint{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,var(--surface))}
+.handbar .hintchip{background:#FFE11A;border-color:#E8B21E;color:#3A3000;font-weight:800}
+.handbar{display:flex;gap:6px;max-width:420px;margin:0 auto 6px}
 .handbar .chip{padding:4px 10px;font-size:.8rem}
 .handbar .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
 .hand button.arr{opacity:1}
@@ -192,8 +203,18 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
       <button type="button" data-n="0">0</button><button type="button" data-n="1">1</button><button type="button" data-n="2">2</button><button type="button" data-n="3">3</button>
     </div>
     <div class="stack" id="soloLevels" style="margin:10px 0 12px"></div>
+    <label class="check"><input type="checkbox" id="soloLearnOk"><span>🎓 Pozwól na podpowiedzi<small>Każda osoba może je włączyć dla siebie w trakcie gry – przy jej imieniu pojawi się 🎓.</small></span></label>
     <button class="btn primary wide" id="soloStart">Zagraj<small id="soloResults">Komputer myśli chwilę, potem Twój ruch</small></button>
     <p class="status" id="soloStatus" role="status"></p>
+  </div>
+  <div class="card learncard">
+    <h2>🎓 Nauka – gra z podpowiedziami</h2>
+    <p class="muted" style="margin:0 0 10px;font-size:.92rem">Grasz z komputerem, a gra podpowiada najlepszy ruch, ocenia każdy Twój ruch i ostrzega, gdy ułatwiasz rywalowi. Wyniki nie liczą się do statystyk.</p>
+    <div class="row learnpick">
+      <button class="btn" type="button" data-learn="easy">Łatwy<small>komputer</small></button>
+      <button class="btn primary" type="button" data-learn="medium">Średni<small>komputer</small></button>
+      <button class="btn" type="button" data-learn="hard">Trudny<small>komputer</small></button>
+    </div>
   </div>
   <div class="card">
     <h2>Przez Wi‑Fi, bez internetu</h2>
@@ -248,7 +269,9 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
         <button class="btn primary" type="submit">Dołącz</button>
       </form>
     </div>
+    <p class="muted" id="lobbyLearn" style="font-size:.9rem;margin:8px 0 0"></p>
     <div id="startBox" hidden>
+      <label class="check"><input type="checkbox" id="onlineLearnOk"><span>🎓 Pozwól na podpowiedzi<small>Każdy gracz może je włączyć dla siebie – wszyscy zobaczą 🎓 przy jego imieniu.</small></span></label>
       <button class="btn primary wide" id="startBtn">Zacznij grę<small>Gdy wszyscy dołączą. Kolejność graczy zostanie wylosowana.</small></button>
     </div>
   </div>
@@ -266,6 +289,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
     <h2>Gracze <span class="muted" id="wifiCount"></span></h2>
     <ul class="plist" id="wifiPlayers"></ul>
     <div class="stack">
+      <label class="check"><input type="checkbox" id="wifiLearnOk"><span>🎓 Pozwól na podpowiedzi<small>Każdy gracz może je włączyć dla siebie – wszyscy zobaczą 🎓 przy jego imieniu.</small></span></label>
       <button class="btn wide" id="wifiAdd">Dodaj gracza<small>Gracz skanuje Twój kod, potem Ty skanujesz jego</small></button>
       <button class="btn primary wide" id="wifiStart">Zacznij grę<small>Kolejność graczy zostanie wylosowana</small></button>
     </div>
@@ -299,6 +323,8 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   </div>
   <div class="scores" id="scores"></div>
   <div class="info" id="info"></div>
+  <div class="learnbar" id="learnBar" hidden>🎓 TRYB NAUKI · masz włączone podpowiedzi</div>
+  <p class="coach" id="coach" hidden></p>
   <div class="boardwrap">
     <div class="board" id="board"><div class="inner" id="inner"></div></div>
     <div class="zoom"><button id="zoomIn" aria-label="Powiększ" title="Powiększ (albo rozsuń dwa palce)">+</button><button id="zoomOut" aria-label="Pomniejsz" title="Pomniejsz (albo zsuń dwa palce)">−</button><button id="zoomFit" aria-label="Pokaż całą planszę" title="Pokaż całą planszę" style="font-size:1.05rem">⤢</button></div>
@@ -311,7 +337,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
   </div>
   <div class="dock" id="dock">
     <p class="msg" id="msg" role="status"></p>
-    <div class="handbar"><button class="chip" type="button" id="arrangeBtn">⇄ Przestaw płytki</button></div>
+    <div class="handbar"><button class="chip hintchip" type="button" id="hintBtn" hidden>💡 Podpowiedź</button><button class="chip" type="button" id="learnBtn" hidden>🎓 Włącz podpowiedzi</button><span style="flex:1"></span><button class="chip" type="button" id="arrangeBtn">⇄ Przestaw płytki</button></div>
     <div class="hand" id="hand"></div>
     <div class="actions" id="actions">
       <button class="btn primary" id="playBtn">Zatwierdź</button>
@@ -374,7 +400,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 <script type="module">
 import { COLORS, SHAPES, COLOR_NAMES, checkMove, key, colorOf, shapeOf } from './rules.js';
 import * as E from './engine.js';
-import { decide, LEVELS } from './bot.js';
+import { decide, LEVELS, advise, threatAfter } from './bot.js';
 import * as W from './wifi.js';
 
 const API='/api/plytki/games';
@@ -445,6 +471,9 @@ function setGame(next){
   const firstView=!g;
   g=next;
   checkWow(firstView);
+  coachAfter();
+  if(myTurn()&&amLearner()){const a=myAdvice();if(!turnAdv||turnAdv.k!==adv.k)turnAdv={k:adv.k,who:g.me.id,name:g.seat,hand:g.me.hand.slice(),a};}
+  if(!g.board.length&&g.status==='play')showCoach('');
   syncClock();
   if(code&&g.me&&Array.isArray(g.players))rememberOnline(g);
   if(g.status==='end'&&Array.isArray(g.players))rememberFinished(g);
@@ -478,6 +507,8 @@ function renderLobby(){
   $('joinBox').hidden=!!g.me||g.players.length>=4;
   $('startBox').hidden=!g.me;
   $('startBtn').disabled=busy;
+  $('onlineLearnOk').checked=!!g.learnOk;$('onlineLearnOk').disabled=busy;
+  $('lobbyLearn').textContent=g.learnOk?'🎓 Podpowiedzi dozwolone – każdy może je włączyć dla siebie w trakcie gry.':'';
   // Szybki wybór imion z gry online licznika, z którą połączona jest ta gra.
   if(g.pk&&!g.me&&picksFor!==g.pk){
     picksFor=g.pk;
@@ -497,6 +528,7 @@ function renderGame(){
   else if(wifiGuest){$('codeChip').textContent=guestLink&&guestLink.open?'📶':'📶 Połącz';$('codeChip').title='Połączenie z gospodarzem';}
   else $('codeChip').textContent=g.id;
   $('codeChip').hidden=solo;
+  $('learnBar').hidden=!amLearner();
   $('timerBtn').setAttribute('aria-label',timerSec?'Czas na ruch: '+timerLabel(timerSec):'Czas na ruch');
   const sc=$('scores');sc.innerHTML='';
   g.players.forEach((p,i)=>{
@@ -504,6 +536,7 @@ function renderGame(){
     d.appendChild(el('span',null,p.name));
     if(p.level)d.appendChild(el('span','lv',LEVELS[p.level].toLowerCase()));
     if(p.off)d.appendChild(el('span','lv','bez połączenia'));
+    if(p.learn){const b=el('span','lv','🎓');b.title='Gra z podpowiedziami';d.appendChild(b);}
     if(g.me&&p.id===g.me.id)d.appendChild(el('span','me','ty'));
     d.appendChild(el('b',null,String(p.score)));
     // Pusty worek: ile płytek zostało każdemu (kto pierwszy wyłoży wszystkie, dostaje +6).
@@ -678,6 +711,87 @@ function preview(){
 }
 function setMsg(t,err){const m=$('msg');m.textContent=t||'';m.classList.toggle('err',!!err);}
 
+/* ---------- Nauka: podpowiedzi, ocena ruchów, ostrzeżenia ---------- */
+// Podpowiedzi włącza się dla siebie (gdy gra na to pozwala); wszyscy widzą 🎓 przy imieniu do końca gry.
+const amLearner=()=>!!(g&&g.me&&(g.players.find(p=>p.id===g.me.id)||{}).learn);
+let adv=null,turnAdv=null,coachSeen=null;
+function myAdvice(){
+  const k=g.board.length+'|'+g.me.id+'|'+g.me.hand.join(',')+'|'+g.bag;
+  if(!adv||adv.k!==k)adv={k,a:advise(g.board,g.me.hand,g.bag)};
+  return adv.a;
+}
+const tileName=t=>SHAPES[shapeOf(t)]+' ('+COLOR_NAMES[colorOf(t)]+')';
+const linesText=ls=>ls.map(n=>n===6?'pełna szóstka 6+6':'linia '+n).join(' + ');
+const moveText=(m,hand)=>m.moves.map(x=>tileName(hand[x.i])).join(', ')+' → '+linesText(m.lines);
+function showCoach(t,kind){const c=$('coach');if(!c)return;c.hidden=!t;c.textContent=t||'';c.className='coach'+(kind?' '+kind:'');}
+// Statystyka nauki dla bieżącej gry (osobno dla każdej osoby z podpowiedziami).
+const LEARN_KEY='plytki-nauka';
+function learnData(){
+  const sig=(code||(wifi?'wifi':'tel'))+'|'+g.players.map(p=>p.name).join(',');
+  let d=readJson(LEARN_KEY);
+  if(!d||d.sig!==sig||(d.boardLen||0)>g.board.length)d={sig,boardLen:0,by:{}};
+  return d;
+}
+function coachAfter(){
+  const l=g&&g.last;
+  if(!l||!turnAdv||l.player!==turnAdv.who)return;
+  const k=[l.player,l.score,(l.cells||[]).map(c=>c.join(',')).join(';'),l.swapped||0,l.passed?1:0,g.board.length].join('|');
+  if(k===coachSeen)return;coachSeen=k;
+  const {a,hand,name,hinted}=turnAdv;turnAdv=null;
+  const who=name?name+': ':'';
+  // Przy kilku osobach na jednym telefonie nie zdradzamy płytek – ocenę widzi już następna osoba.
+  const best2=()=>name?'':': '+moveText(a.topMove||a.best,hand);
+  let t,kind='warn',best=false;
+  if(l.cells&&l.cells.length){
+    if(l.score>=a.top){best=true;kind='good';t='✓ '+(who?who+'najlepszy':'Najlepszy')+' możliwy ruch, +'+l.score+'!';}
+    else t=who+'Twój ruch +'+l.score+'. Najwięcej dawał ruch za +'+a.top+best2()+'.';
+  }else if(a.best){
+    t=who+(l.swapped?'Wymiana płytek':'Pas')+', a można było zdobyć +'+a.top+best2()+'.';
+  }else{best=true;kind='good';t='✓ '+(who?who+'nie było':'Nie było')+' żadnego ruchu – '+(l.swapped?'wymiana to dobry wybór.':'pas był jedynym wyjściem.');}
+  const d=learnData(),s=d.by[l.player]||(d.by[l.player]={moves:0,best:0,lost:0,hints:0});
+  s.moves++;if(best)s.best++;s.lost+=Math.max(0,a.top-l.score);if(hinted)s.hints++;
+  d.boardLen=g.board.length;store.set(LEARN_KEY,JSON.stringify(d));
+  showCoach(t,kind);
+}
+function learnSummary(){
+  const d=learnData(),out=[];
+  const many=g.players.filter(x=>x.learn).length>1;
+  g.players.filter(p=>p.learn&&d.by[p.id]).forEach(p=>{
+    const s=d.by[p.id];
+    const nm=many||!g.me||p.id!==g.me.id;
+    out.push('🎓 '+(nm?p.name+': najlepszy':'Najlepszy')+' ruch w '+s.best+' z '+s.moves+' ruchów'+(s.hints?', podpowiedź użyta '+s.hints+' '+(s.hints===1?'raz':'razy'):'')+'. Przez słabsze ruchy stracone '+s.lost+' pkt.');
+  });
+  return out;
+}
+$('hintBtn').onclick=()=>{
+  if(!myTurn()||!amLearner())return;
+  const a=myAdvice();arrange=false;pick=-1;sel=-1;
+  if(a.best){
+    swapMode=false;marked.clear();
+    pending=a.best.moves.map(m=>({i:m.i,x:m.x,y:m.y}));
+    let t='💡 Najlepszy ruch: +'+a.best.score+' – '+moveText(a.best,g.me.hand)+'.';
+    if(a.topMove&&a.top>a.best.score)t+=' Ruch za +'+a.top+' dałby więcej, ale rywal mógłby potem zdobyć nawet '+a.topMove.threat+' pkt – ten jest bezpieczniejszy.';
+    else if(a.best.threat>=10)t+=' Po nim rywal może zdobyć do '+a.best.threat+' pkt, ale lepszego ruchu nie ma.';
+    showCoach(t+' Zatwierdź albo Cofnij.','hint');
+  }else if(a.swap){
+    pending=[];swapMode=true;marked.clear();a.swap.forEach(i=>marked.add(i));
+    showCoach('💡 Nie masz żadnego ruchu. Zaznaczyłem płytki do wymiany: powtórki i te, które najmniej pasują do reszty.','hint');
+  }else showCoach('💡 Nie masz żadnego ruchu, a worek jest pusty – zostaje pas.','hint');
+  if(turnAdv)turnAdv.hinted=true;
+  renderBoard();renderDock();
+};
+$('learnBtn').onclick=async()=>{
+  if(!g||!g.me||!g.learnOk)return;
+  if(!confirm('Włączyć podpowiedzi? Wszyscy zobaczą 🎓 przy Twoim imieniu do końca tej gry.'))return;
+  if(local){const p=sgame.game.players.find(x=>x.id===g.me.id);if(p){p.learn=true;changed();}return;}
+  if(wifiGuest){if(!guestLink||!guestLink.open){setMsg('Brak połączenia z gospodarzem.',true);return;}guestLink.send({t:'learn'});return;}
+  try{setGame(await api('POST','/'+code+'/learn',{}));}catch(e){setMsg(e.message,true);}
+};
+$('onlineLearnOk').onchange=async e=>{
+  try{setGame(await api('POST','/'+code+'/learn-ok',{on:e.target.checked}));}catch(err){$('lobbyStatus').textContent=err.message;render();}
+};
+document.querySelectorAll('[data-learn]').forEach(b=>b.onclick=()=>startSolo({names:[(soloSet.names[0]||'').trim().slice(0,24)],levels:[b.dataset.learn],learn:true}));
+
 /* ---------- Własna kolejność płytek w ręce (przeciąganie) ---------- */
 // Kolejność to tylko widok na tym telefonie: zapamiętujemy ją jako listę płytek, nowe płytki trafiają na koniec.
 const ORDER_KEY='plytki-reka';
@@ -717,6 +831,9 @@ function renderDock(){
     h.appendChild(b);
   });
   for(let i=g.me.hand.length;i<6;i++)h.appendChild(el('span','empty'));
+  const learner=amLearner();
+  $('hintBtn').hidden=!learner||!mt;$('hintBtn').disabled=busy;
+  $('learnBtn').hidden=learner||!g.learnOk||g.status!=='play';
   const ab=$('arrangeBtn');ab.textContent=arrange?'✓ Gotowe':'⇄ Przestaw płytki';ab.classList.toggle('on',arrange);
   const play=$('playBtn'),undo=$('undoBtn'),swap=$('swapBtn'),pass=$('passBtn');
   if(arrange)setTimeout(()=>setMsg(pick<0?'Dotknij płytki, którą chcesz przestawić.':'Teraz dotknij płytki, z którą ma się zamienić miejscami.'),0);
@@ -735,7 +852,14 @@ function renderDock(){
   swap.disabled=busy||!mt||!!pending.length||!g.bag;
   if(!mt)setMsg(g.status==='play'?'Poczekaj na swój ruch. Możesz już planować i przestawiać płytki.':'');
   else if(pv&&!pv.ok)setMsg(pv.error,true);
-  else if(pv)setMsg(pv.lines.length?'Linie: '+pv.lines.join(' + ')+(pv.lines.includes(6)?' (pełna szóstka +6)':''):'');
+  else if(pv){
+    let t=pv.lines.length?'Linie: '+pv.lines.join(' + ')+(pv.lines.includes(6)?' (pełna szóstka +6)':''):'';
+    if(amLearner()){
+      const th=threatAfter(g.board,g.me.hand,pending.map(p=>({x:p.x,y:p.y,t:g.me.hand[p.i]})));
+      if(th>=10){setMsg(t+' ⚠ Po tym ruchu rywal może zdobyć nawet '+th+' pkt.',true);t=null;}
+    }
+    if(t!==null)setMsg(t);
+  }
   else setMsg(sel>=0?'Dotknij wolnego pola na planszy.':'Wybierz płytkę i dotknij pola na planszy.');
 }
 
@@ -763,6 +887,7 @@ function renderEnd(){
   const ol=el('ol');ranked.forEach(p=>ol.appendChild(el('li',null,(p.score===top?'🏆 ':'')+p.name+' — '+p.score)));box.appendChild(ol);
   if(g.pk)box.appendChild(el('p','muted','Wynik zapisany w historii licznika (gra '+g.pk+').'));
   if(solo&&soloCounts()){const st=soloStats();box.appendChild(el('p','muted','Twoje wygrane z komputerem: '+st.wins+' z '+st.games+'.'));}
+  learnSummary().forEach(t=>box.appendChild(el('p','muted',t)));
   if(wifiGuest)box.appendChild(el('p','muted','Nową partię zaczyna gospodarz.'));
   const row=el('div','row');
   const again=el('button','btn primary','Nowa partia');
@@ -904,7 +1029,8 @@ function localView(forId){
   const me=forId&&gm.players.find(p=>p.id===forId);
   const many=localHumans().length>1&&!(forId&&forId.startsWith('r-'));
   return {id:'',title:sgame.title||'Płytki',status:gm.status,rev:0,pk:null,turn:gm.turn,bag:gm.bag.length,board:gm.board,last:gm.last||null,
-    players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null,off:!!(p.remote&&!(links.get(p.id)||{}).open)})),
+    players:gm.players.map(p=>({id:p.id,name:p.name,score:p.score,tiles:p.hand.length,moves:p.moves,level:p.level||null,learn:!!p.learn,off:!!(p.remote&&!(links.get(p.id)||{}).open)})),
+    learnOk:!!sgame.learnOk,
     me:me?{id:me.id,hand:me.hand}:null,
     seat:many&&me?me.name:null,
     timer:sgame.timer||0,timerLeft:sgame.timer?sgame.timer*1000-(Date.now()-(sgame.turnStart||Date.now())):null,
@@ -913,7 +1039,7 @@ function localView(forId){
 function saveLocal(){store.set(LOCAL_KEY,JSON.stringify(sgame));}
 function soloStats(){try{return JSON.parse(store.get(SOLO_STATS))||{games:0,wins:0};}catch(e){return {games:0,wins:0};}}
 // Statystyka „wygrane z komputerem” tylko dla gry jednej osoby z komputerem.
-const soloCounts=()=>solo&&sgame&&localHumans().length===1&&sgame.game.players.some(p=>p.level);
+const soloCounts=()=>solo&&sgame&&localHumans().length===1&&sgame.game.players.some(p=>p.level)&&!sgame.game.players.some(p=>p.learn);
 function finishLocal(){
   if(!soloCounts()||sgame.counted||sgame.game.status!=='end')return;
   sgame.counted=true;saveLocal();
@@ -932,10 +1058,12 @@ function markTurn(force){
 function startSolo(settings){
   const names=settings.names||[settings.name||''];
   const many=names.length>1;
-  const players=names.map((n,i)=>({id:i?'h'+(i+1):'me',name:n||(many?'Gracz '+(i+1):'Ty')}));
+  const learn=!!settings.learn;
+  const players=names.map((n,i)=>({id:i?'h'+(i+1):'me',name:n||(many?'Gracz '+(i+1):'Ty'),learn}));
   (settings.levels||[]).forEach((lv,i)=>players.push({id:'bot'+(i+1),name:'Komputer '+(i+1),level:lv}));
-  const title=!many?'Gra z komputerem':'Gra na jednym telefonie';
-  sgame={settings:{names,levels:(settings.levels||[]).slice()},title,timer:(sgame&&sgame.timer)||0,game:E.deal({status:'lobby',players})};
+  const title=learn?'Nauka – gra z komputerem':!many?'Gra z komputerem':'Gra na jednym telefonie';
+  showCoach('');
+  sgame={settings:{names,levels:(settings.levels||[]).slice(),learn,learnOk:!!settings.learnOk},learnOk:learn||!!settings.learnOk,title,timer:(sgame&&sgame.timer)||0,game:E.deal({status:'lobby',players})};
   markTurn(true);
   saveLocal();shown=null;g=null;
   if(!solo){location.href='?solo=1';return;}
@@ -977,7 +1105,7 @@ let soloSet=(()=>{
     const v=JSON.parse(store.get('plytki-solo-ustawienia'));
     if(v&&Array.isArray(v.levels)){
       const names=Array.isArray(v.names)&&v.names.length?v.names:[v.name||''];
-      return {names:names.slice(0,4),levels:v.levels.slice(0,4-Math.min(4,names.length))};
+      return {names:names.slice(0,4),levels:v.levels.slice(0,4-Math.min(4,names.length)),learnOk:!!v.learnOk};
     }
   }catch(e){}
   return {names:[''],levels:['medium']};
@@ -1027,11 +1155,13 @@ $('soloCount').onclick=e=>{
   while(soloSet.levels.length<n)soloSet.levels.push(soloSet.levels[soloSet.levels.length-1]||'medium');
   soloSet.levels.length=n;renderHome();
 };
+$('soloLearnOk').checked=!!soloSet.learnOk;
+$('soloLearnOk').onchange=e=>{soloSet.learnOk=e.target.checked;saveSoloSet();};
 $('soloStart').onclick=()=>{
   soloSet.names=soloSet.names.map(n=>n.trim().slice(0,24));
   if(soloSet.names.length+soloSet.levels.length<2){$('soloStatus').textContent='Dodaj drugą osobę albo komputer.';return;}
   saveSoloSet();
-  startSolo({names:soloSet.names.slice(),levels:soloSet.levels.slice()});
+  startSolo({names:soloSet.names.slice(),levels:soloSet.levels.slice(),learnOk:!!soloSet.learnOk});
 };
 
 /* ---------- Gra przez Wi‑Fi ---------- */
@@ -1131,6 +1261,10 @@ function hostWire(pc,dc){
       pid=id;links.set(id,link);
       if($('pairDlg').open)$('pairDlg').close();
       if(started){setGame(localView());broadcast();}else{renderWifi();sendLobby();}
+    }else if(m.t==='learn'&&pid&&sgame&&sgame.game){
+      const p=sgame.game.players.find(x=>x.id===pid);
+      if(!sgame.learnOk)link.send({t:'err',msg:'Gospodarz nie pozwolił na podpowiedzi.'});
+      else if(p){p.learn=true;changed();}
     }else if(m.t==='act'&&pid&&sgame&&sgame.game){
       localAct(m.path,m.data||{},pid);
     }
@@ -1153,12 +1287,13 @@ $('wifiStart').onclick=()=>{
   const name=myName()||'Gospodarz';
   const players=[{id:'me',name}].concat(lobbyGuests.map(p=>({id:p.id,name:p.name,remote:true})));
   if(players.length<2){wifiStatus('Dodaj co najmniej jednego gracza.');return;}
-  sgame={title:'Gra przez Wi‑Fi',game:E.deal({status:'lobby',players})};
+  sgame={title:'Gra przez Wi‑Fi',learnOk:$('wifiLearnOk').checked,game:E.deal({status:'lobby',players})};
   shown=null;changed();
 };
 function newWifiRound(){
   const players=sgame.game.players.map(p=>({id:p.id,name:p.name,remote:p.remote,level:p.level}));
-  sgame={title:sgame.title,timer:sgame.timer||0,game:E.deal({status:'lobby',players})};
+  showCoach('');
+  sgame={title:sgame.title,timer:sgame.timer||0,learnOk:!!sgame.learnOk,game:E.deal({status:'lobby',players})};
   shown=null;changed();
 }
 // Gospodarz w trakcie gry: lista graczy i ponowne łączenie.
@@ -1272,7 +1407,7 @@ function resumeItems(){
 const HIST_KEY='plytki-historia';
 function rememberFinished(v){
   const mode=code?'Online '+code:wifiHost?'Przez Wi‑Fi (gospodarz)':wifiGuest?'Przez Wi‑Fi':(v.title||'Na tym telefonie');
-  const players=v.players.map(p=>({name:p.name,score:p.score}));
+  const players=v.players.map(p=>({name:p.name+(p.learn?' 🎓':''),score:p.score}));
   const key=mode+'|'+players.map(p=>p.name+':'+p.score).join(',')+'|'+(v.board?v.board.length:0);
   let list=readJson(HIST_KEY);if(!Array.isArray(list))list=[];
   if(list.some(x=>x.key===key))return;

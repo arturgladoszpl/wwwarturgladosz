@@ -139,3 +139,36 @@ export function decide(game, p, level = 'medium', random = Math.random) {
   }
   return { type: 'play', moves: bestMove.moves };
 }
+
+// ---------- Podpowiedzi (tryb nauki) ----------
+// Liczone na telefonie gracza z tego, co on sam widzi: plansza, jego płytki i liczba płytek w worku.
+const boardOf = board => new Map(board.map(([x, y, t]) => [key(x, y), t]));
+
+// Najwięcej punktów, jakie rywal mógłby zdobyć jedną płytką, gdyby na planszy leżały jeszcze `placed` ([{x,y,t}]).
+export function threatAfter(board, hand, placed) {
+  const next = boardOf(board);
+  for (const c of placed) next.set(key(c.x, c.y), c.t);
+  return threat(next, unseenTiles({ board }, { hand }));
+}
+
+// Najlepszy ruch według trudnego komputera, ruch za najwięcej punktów i propozycja wymiany, gdy ruchu nie ma.
+export function advise(board, hand, bagCount) {
+  const bm = boardOf(board);
+  const moves = allMoves(bm, hand);
+  if (!moves.length) return { best: null, top: 0, swap: bagCount ? swapPick(hand, bagCount, 'hard') : null };
+  const unseen = unseenTiles({ board }, { hand });
+  const top = Math.max(...moves.map(m => m.score));
+  const cands = moves.slice().sort((a, b) => b.score - a.score).slice(0, W.top);
+  let best = null, bestValue = -Infinity, topMove = null;
+  for (const m of cands) {
+    const used = new Set(m.moves.map(x => x.i));
+    const next = new Map(bm);
+    for (const x of m.moves) next.set(key(x.x, x.y), hand[x.i]);
+    const th = threat(next, unseen);
+    const value = m.score - W.threat * th + keepValue(hand, used) * W.keep;
+    const c = { ...m, threat: th };
+    if (m.score === top && (!topMove || th < topMove.threat)) topMove = c;
+    if (value > bestValue) { bestValue = value; best = c; }
+  }
+  return { best, top, topMove, swap: null };
+}

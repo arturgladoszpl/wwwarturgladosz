@@ -1,0 +1,3 @@
+# Gra i licznik: telefon zawsze sprawdza, czy pliki się nie zmieniły (bez internetu działa kopia z service workera).
+/punkty/*
+  Cache-Control: no-cache

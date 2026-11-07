@@ -103,6 +103,11 @@ input.text{font:inherit;font-size:1.05rem;width:100%;min-width:0;padding:10px 12
 .hand button .tile{width:100%;height:100%}
 .hand button.sel .tile{box-shadow:0 0 0 3px var(--accent);transform:translateY(-4px)}
 .hand button.used{opacity:.2}
+.hand button{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.hand button.drag{z-index:5;transition:none;opacity:.9}
+.hand button.drag .tile{box-shadow:0 8px 18px rgba(0,0,0,.35);transform:scale(1.1)}
+.hand button.dropl{box-shadow:-5px 0 0 -1px var(--accent)}
+.hand button.dropr{box-shadow:5px 0 0 -1px var(--accent)}
 .hand button.mark .tile{box-shadow:0 0 0 3px var(--bad)}
 .hand .empty{aspect-ratio:1;border:2px dashed var(--line);border-radius:14%}
 .actions{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;max-width:420px;margin:0 auto}
@@ -215,6 +220,7 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
       <li>Punkt za każdą płytkę w każdej linii, którą tworzysz lub przedłużasz.</li>
       <li>Pełna linia 6 płytek: +6. Kto pierwszy wyłoży wszystko, gdy worek jest pusty: +6.</li>
       <li>Zamiast ruchu możesz wymienić płytki z workiem.</li>
+      <li>Swoje płytki możesz ustawić w dowolnej kolejności – przesuń płytkę palcem w bok.</li>
     </ul>
   </div>
   <p class="status" id="homeStatus" role="status"></p>
@@ -668,18 +674,64 @@ function preview(){
 }
 function setMsg(t,err){const m=$('msg');m.textContent=t||'';m.classList.toggle('err',!!err);}
 
+/* ---------- Własna kolejność płytek w ręce (przeciąganie) ---------- */
+// Kolejność to tylko widok na tym telefonie: zapamiętujemy ją jako listę płytek, nowe płytki trafiają na koniec.
+const ORDER_KEY='plytki-reka';
+let dragJust=false;
+function savedOrder(){const o=readJson(ORDER_KEY);return o&&g.me&&o.id===(g.id||'')+'|'+g.me.id?o.tiles:[];}
+function handOrder(){
+  const hand=g.me.hand,left=hand.map((t,i)=>i),out=[];
+  savedOrder().forEach(t=>{const k=left.findIndex(i=>hand[i]===t);if(k>=0)out.push(left.splice(k,1)[0]);});
+  return out.concat(left);
+}
+function saveOrder(order){store.set(ORDER_KEY,JSON.stringify({id:(g.id||'')+'|'+g.me.id,tiles:order.map(i=>g.me.hand[i])}));}
+function dragStart(e,b,i){
+  if(e.button>0)return;
+  const x0=e.clientX,y0=e.clientY,btns=[...$('hand').querySelectorAll('button')];
+  let on=false;
+  const move=ev=>{
+    const dx=ev.clientX-x0,dy=ev.clientY-y0;
+    if(!on){
+      if(Math.hypot(dx,dy)<10)return;
+      on=true;b.classList.add('drag');try{b.setPointerCapture(ev.pointerId);}catch(_){}
+    }
+    ev.preventDefault();
+    b.style.transform='translate('+dx+'px,'+Math.min(0,dy)+'px)';
+    const to=target(ev.clientX);
+    btns.forEach((x,n)=>x.classList.toggle('dropl',x!==b&&n===to&&n<btns.indexOf(b)));
+    btns.forEach((x,n)=>{if(n===to&&n>btns.indexOf(b))x.classList.add('dropr');else x.classList.remove('dropr');});
+  };
+  const target=cx=>{
+    let best=0,dist=1e9;
+    btns.forEach((x,n)=>{const r=x.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-cx);if(d<dist){dist=d;best=n;}});
+    return best;
+  };
+  const end=ev=>{
+    b.removeEventListener('pointermove',move);b.removeEventListener('pointerup',end);b.removeEventListener('pointercancel',end);
+    if(!on)return;
+    dragJust=true;setTimeout(()=>{dragJust=false;},0);
+    const order=btns.map(x=>Number(x.dataset.i)),from=order.indexOf(i),to=ev.type==='pointercancel'?from:target(ev.clientX);
+    order.splice(to,0,order.splice(from,1)[0]);
+    saveOrder(order);renderDock();
+  };
+  b.addEventListener('pointermove',move);b.addEventListener('pointerup',end);b.addEventListener('pointercancel',end);
+}
 function renderDock(){
   const dock=$('dock');
   dock.hidden=!g.me||g.status==='end';
   if(dock.hidden)return;
   const h=$('hand');h.innerHTML='';
   const mt=myTurn();
-  g.me.hand.forEach((t,i)=>{
+  handOrder().forEach(i=>{
+    const t=g.me.hand[i];
     const used=pending.some(p=>p.i===i);
     const b=el('button',(i===sel?'sel ':'')+(used?'used ':'')+(marked.has(i)?'mark':''));
     b.appendChild(tileEl(t));b.disabled=used;
     b.setAttribute('aria-pressed',i===sel||marked.has(i));
+    b.dataset.i=i;
+    b.onpointerdown=e=>dragStart(e,b,i);
     b.onclick=()=>{
+      if(dragJust){dragJust=false;return;}
       if(swapMode){marked.has(i)?marked.delete(i):marked.add(i);renderDock();return;}
       sel=sel===i?-1:i;renderBoard();renderDock();
     };
@@ -700,10 +752,10 @@ function renderDock(){
   play.disabled=busy||!mt||!pv||!pv.ok;
   undo.disabled=!pending.length;
   swap.disabled=busy||!mt||!!pending.length||!g.bag;
-  if(!mt)setMsg(g.status==='play'?'Poczekaj na swój ruch. Możesz już planować.':'');
+  if(!mt)setMsg(g.status==='play'?'Poczekaj na swój ruch. Możesz już planować i przestawiać płytki.':'');
   else if(pv&&!pv.ok)setMsg(pv.error,true);
   else if(pv)setMsg(pv.lines.length?'Linie: '+pv.lines.join(' + ')+(pv.lines.includes(6)?' (pełna szóstka +6)':''):'');
-  else setMsg(sel>=0?'Dotknij wolnego pola na planszy.':'Wybierz płytkę i dotknij pola na planszy.');
+  else setMsg(sel>=0?'Dotknij wolnego pola na planszy.':'Wybierz płytkę i dotknij pola na planszy. Kolejność płytek zmienisz, przesuwając je palcem.');
 }
 
 // Kilka osób na jednym telefonie: między ruchami płytki są zakryte, aż następna osoba weźmie telefon.

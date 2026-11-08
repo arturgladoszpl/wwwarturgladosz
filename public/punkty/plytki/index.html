@@ -254,13 +254,8 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
 <div class="page" id="lobby" hidden>
   <div class="top"><h1 id="lobbyTitle">Płytki online</h1><a class="back" href="/punkty/">← Licznik</a></div>
   <div class="card">
-    <h2>Kod gry</h2>
-    <div class="code" id="lobbyCode"></div>
-    <div class="qr" id="lobbyQr"></div>
-    <button class="btn wide" id="lobbyShare">Wyślij link do gry</button>
-  </div>
-  <div class="card">
     <h2>Gracze <span class="muted" id="lobbyCount"></span></h2>
+    <p class="muted" id="lobbyCodeLine" style="font-size:.9rem;margin:-4px 0 8px" hidden>Gra <b id="lobbyCodeSmall"></b> · <a href="#" id="lobbyShowCode">pokaż kod i QR</a></p>
     <ul class="plist" id="lobbyPlayers"></ul>
     <div id="joinBox">
       <div class="picks" id="picks"></div>
@@ -274,6 +269,12 @@ dialog h2{margin:0 0 10px;font-size:1.25rem}
       <label class="check"><input type="checkbox" id="onlineLearnOk"><span>🎓 Pozwól na podpowiedzi<small>Każdy gracz może je włączyć dla siebie – wszyscy zobaczą 🎓 przy jego imieniu.</small></span></label>
       <button class="btn primary wide" id="startBtn">Zacznij grę<small>Gdy wszyscy dołączą. Kolejność graczy zostanie wylosowana.</small></button>
     </div>
+  </div>
+  <div class="card" id="lobbyCodeBox" hidden>
+    <h2>Pokaż kod pozostałym graczom</h2>
+    <div class="code" id="lobbyCode"></div>
+    <div class="qr" id="lobbyQr"></div>
+    <button class="btn wide" id="lobbyShare">Wyślij link do gry</button>
   </div>
   <p class="status" id="lobbyStatus" role="status"></p>
 </div>
@@ -444,6 +445,7 @@ const SOLO_KEY='plytki-solo',SOLO_STATS='plytki-solo-wyniki',WIFI_KEY='plytki-wi
 const LOCAL_KEY=wifiHost?WIFI_KEY:SOLO_KEY;
 let sgame=null;
 const TOKEN_KEY='plytki-token-'+code;
+const HOST_KEY='plytki-gospodarz-'+code;
 let token=store.get(TOKEN_KEY)||'';
 let g=null;                 // ostatni stan z serwera
 let sel=-1;                 // wybrana płytka na ręce
@@ -496,10 +498,13 @@ function render(){
 }
 
 let picksFor=null;
+let lobbyShowCode=false;
 function renderLobby(){
   $('lobbyTitle').textContent=g.title||'Płytki online';
-  $('lobbyCode').textContent=g.id;
-  drawQr($('lobbyQr'));
+  // Kod i QR są potrzebne temu, kto założył grę (żeby pokazać je innym); kto dołącza, widzi tylko krótką linijkę.
+  const host=store.get(HOST_KEY)==='1'||lobbyShowCode;
+  $('lobbyCodeBox').hidden=!host;$('lobbyCodeLine').hidden=host;$('lobbyCodeSmall').textContent=g.id;
+  if(host){$('lobbyCode').textContent=g.id;drawQr($('lobbyQr'));}
   const l=$('lobbyPlayers');l.innerHTML='';
   g.players.forEach(p=>{const li=el('li',null,p.name);if(g.me&&p.id===g.me.id)li.appendChild(el('small',null,'(ty)'));l.appendChild(li);});
   if(!g.players.length)l.appendChild(el('li','muted','Nikt jeszcze nie dołączył.'));
@@ -997,7 +1002,7 @@ $('startBtn').onclick=async()=>{
 };
 
 async function createGame(title,pk){
-  try{const r=await api('POST','',{title:title||'',pk:pk||null});location.href='?g='+r.id;}
+  try{const r=await api('POST','',{title:title||'',pk:pk||null});store.set('plytki-gospodarz-'+r.id,'1');location.href='?g='+r.id;}
   catch(e){($('homeStatus').textContent=e.message);setMsg(e.message,true);}
 }
 $('createBtn').onclick=()=>createGame('',null);
@@ -1562,6 +1567,7 @@ async function share(statusEl){
   if(navigator.share){try{await navigator.share({title:'Płytki online',text:'Dołącz do gry, kod '+code,url});return;}catch(e){if(e&&e.name==='AbortError')return;}}
   try{await navigator.clipboard.writeText(url);statusEl.textContent='Skopiowano link: '+url;}catch(e){statusEl.textContent=url;}
 }
+$('lobbyShowCode').onclick=e=>{e.preventDefault();lobbyShowCode=true;renderLobby();};
 $('lobbyShare').onclick=()=>share($('lobbyStatus'));
 $('shareLink').onclick=()=>share($('shareStatus'));
 $('codeChip').onclick=()=>{

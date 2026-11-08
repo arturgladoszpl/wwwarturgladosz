@@ -548,6 +548,7 @@ $('newTiles').onclick=async()=>{
   try{
     const r=await fetch('/api/plytki/games',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({title:state.title||'',pk:net?net.code:null})});
     const j=await r.json();if(!r.ok)throw new Error(j.error||'Błąd połączenia.');
+    try{localStorage.setItem('plytki-gospodarz-'+j.id,'1');}catch(e){}
     location.href='plytki/?g='+j.id;
   }catch(e){$('newStatus').textContent=e.message;b.disabled=false;}
 };
